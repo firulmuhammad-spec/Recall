@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, LogIn, AlertCircle } from 'lucide-react';
-import { signInWithGoogle } from '../lib/firebase';
+import { signInWithGoogle, handleRedirectResult } from '../lib/firebase';
 
 interface LoginViewProps {
   onLoginSuccess: () => void;
@@ -10,16 +10,38 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleGoogleLogin = async () => {
+  useEffect(() => {
+    // Check if we just returned from a redirect
+    setLoading(true);
+    handleRedirectResult()
+      .then((result) => {
+        if (result?.user) {
+          onLoginSuccess();
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect error:', err);
+        if (err.code === 'auth/authorized-domain-id-mismatch') {
+          setError('Domain ini belum didaftarkan di Firebase Console. Silakan tambahkan domain Anda di Authorized Domains.');
+        } else {
+          setError('Gagal masuk: ' + err.message);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const handleGoogleLogin = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Extra precaution
     setError('');
     setLoading(true);
     try {
       await signInWithGoogle();
-      onLoginSuccess();
+      // Browser will redirect now...
     } catch (err: any) {
       console.error('Login error:', err);
-      setError('Gagal masuk dengan Google. Silakan coba lagi.');
-    } finally {
+      setError('Terjadi kesalahan saat memulai sistem login.');
       setLoading(false);
     }
   };
