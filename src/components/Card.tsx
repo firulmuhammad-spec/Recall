@@ -16,6 +16,8 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportMode, setExportMode] = useState<'full' | 'photo_only'>('full');
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const exportRef = React.useRef<HTMLDivElement>(null);
   const isUrgent = item.effectiveStatus === 'Urgent';
 
@@ -29,26 +31,52 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
     setCurrentImgIndex((prev) => (prev - 1 + item.foto.length) % item.foto.length);
   };
 
-  const handleExport = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!exportRef.current) return;
-    
+  const handleExportAction = async (action: 'download' | 'share', mode: 'full' | 'photo_only') => {
+    setExportMode(mode);
     setIsExporting(true);
+    
+    // Small delay to ensure the hidden ExportCard has updated its props/mode before capture
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    if (!exportRef.current) {
+      setIsExporting(false);
+      return;
+    }
+    
     try {
-      // Use a timeout to ensure component is rendered fully if it was just mounted
-      // But here it is fixed position anyway
       const dataUrl = await toPng(exportRef.current, {
         cacheBust: true,
         quality: 1,
-        pixelRatio: 2, // Higher resolution
+        pixelRatio: 2,
       });
       
-      const link = document.createElement('a');
-      link.download = `RECALL-${item.judul.replace(/\s+/g, '-').toUpperCase()}.png`;
-      link.href = dataUrl;
-      link.click();
+      if (action === 'download') {
+        const link = document.createElement('a');
+        link.download = `RECALL-${mode === 'full' ? 'DETAILS' : 'PHOTOS'}-${item.judul.replace(/\s+/g, '-').toUpperCase()}.png`;
+        link.href = dataUrl;
+        link.click();
+      } else if (action === 'share') {
+        // Convert dataUrl to blob for sharing
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], `recall-${item.id.slice(0, 8)}.png`, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `RECALL: ${item.judul}`,
+            text: `Archive Record: ${item.judul}\n${item.deskripsi}`,
+          });
+        } else {
+          // Fallback to download if sharing not supported
+          const link = document.createElement('a');
+          link.download = `RECALL-SHARE-${item.id.slice(0, 8)}.png`;
+          link.href = dataUrl;
+          link.click();
+        }
+      }
     } catch (err) {
-      console.error('Failed to export image:', err);
+      console.error('Failed to export:', err);
     } finally {
       setIsExporting(false);
     }
@@ -181,14 +209,42 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
            </div>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-           <button 
-             onClick={handleExport}
-             disabled={isExporting}
-             className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-             title="Download Image"
-           >
-              {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-           </button>
+           <div className="relative">
+             <button 
+               onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
+               disabled={isExporting}
+               className={`p-2 rounded-lg transition-colors ${showExportMenu ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50'}`}
+               title="Export Options"
+             >
+                {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
+             </button>
+             
+             <AnimatePresence>
+               {showExportMenu && (
+                 <motion.div 
+                   initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+                   className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-30"
+                   onClick={(e) => e.stopPropagation()}
+                 >
+                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2">Download</div>
+                   <button onClick={() => { handleExportAction('download', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-lg flex items-center gap-2">
+                     <Download size={14} /> Full Record
+                   </button>
+                   <button onClick={() => { handleExportAction('download', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-lg flex items-center gap-2">
+                     <Download size={14} /> Photos Only
+                   </button>
+                   <div className="h-px bg-slate-100 my-1" />
+                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2">Share</div>
+                   <button onClick={() => { handleExportAction('share', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-lg flex items-center gap-2">
+                     <Share2 size={14} /> Details Share
+                   </button>
+                   <button onClick={() => { handleExportAction('share', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-lg flex items-center gap-2">
+                     <Share2 size={14} /> Photos Layout
+                   </button>
+                 </motion.div>
+               )}
+             </AnimatePresence>
+           </div>
            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
               <Pencil size={14} />
            </button>
@@ -311,14 +367,49 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
               <span className="max-w-[100px] truncate">{item.klien || 'General'}</span>
             </div>
             <div className="flex items-center gap-2">
-              <button 
-                onClick={handleExport}
-                disabled={isExporting}
-                className="text-gray-300 hover:text-blue-500 transition-colors disabled:opacity-50"
-                title="Download as Image"
-              >
-                {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
+                  disabled={isExporting}
+                  className={`transition-colors disabled:opacity-50 ${showExportMenu ? 'text-blue-500' : 'text-gray-300 hover:text-blue-500'}`}
+                  title="Export Options"
+                >
+                  {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
+                </button>
+
+                <AnimatePresence>
+                  {showExportMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                      className="absolute bottom-full right-0 mb-3 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2.5 z-40"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-2">Select Export Mode</div>
+                      
+                      <div className="space-y-1">
+                        <button onClick={() => { handleExportAction('download', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center justify-between group">
+                          <span className="flex items-center gap-2"><Download size={14} className="text-slate-400 group-hover:text-blue-500" /> Full Info PNG</span>
+                          <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">HQ</span>
+                        </button>
+                        <button onClick={() => { handleExportAction('download', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                          <Download size={14} className="text-slate-400 group-hover:text-blue-500" /> Photos Grid
+                        </button>
+                      </div>
+
+                      <div className="h-px bg-slate-100 my-2" />
+                      
+                      <div className="space-y-1">
+                        <button onClick={() => { handleExportAction('share', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                          <Share2 size={14} className="text-slate-400 group-hover:text-blue-500" /> Share Data
+                        </button>
+                        <button onClick={() => { handleExportAction('share', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                          <Share2 size={14} className="text-slate-400 group-hover:text-blue-500" /> Share Images
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -342,7 +433,7 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
       </motion.div>
 
       {/* Hidden component for export rendering */}
-      <ExportCard item={item} exportRef={exportRef} />
+      <ExportCard item={item} exportRef={exportRef} mode={exportMode} />
 
       {/* Fullscreen Preview Modal */}
       <AnimatePresence>
