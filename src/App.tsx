@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { LogIn, Plus, LayoutGrid, Settings as SettingsIcon, LogOut, Package, Users, User as UserIcon } from 'lucide-react';
-import { auth } from './lib/firebase';
+import { auth, db } from './lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { FirestoreService } from './lib/firestoreService';
 import { AuthService } from './lib/authService';
 import { RecallPackage, AppSettings, UserProfile } from './types';
@@ -58,7 +59,24 @@ export default function App() {
           return;
         }
 
-        const profile = await FirestoreService.getUserProfile(currUser.uid);
+        let profile = await FirestoreService.getUserProfile(currUser.uid);
+        
+        // Auto-create profile if first time
+        if (!profile) {
+          const newProfile = {
+            username: currUser.email?.split('@')[0] || 'user',
+            displayName: currUser.displayName || 'User',
+            role: 'User' as const,
+            preferences: {
+              viewMode: 'grid' as const,
+              sortBy: 'newest'
+            },
+            createdAt: serverTimestamp()
+          };
+          await setDoc(doc(db, 'users', currUser.uid), newProfile);
+          profile = { id: currUser.uid, ...newProfile };
+        }
+
         setUserProfile(profile as UserProfile);
       } else {
         setUserProfile(null);
