@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Package, LogIn, AlertCircle } from 'lucide-react';
-import { signInWithGoogle } from '../lib/firebase';
+import { signInWithGoogle, config } from '../lib/firebase';
 
 interface LoginViewProps {
   onLoginSuccess: () => void;
@@ -25,10 +25,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         setError('Login dibatalkan. Silakan coba lagi.');
       } else if (err.code === 'auth/popup-blocked') {
         setError('Popup diblokir browser. Izinkan popup untuk situs ini.');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setError('Domain belum terdaftar di Firebase Authorized Domains.');
+      } else if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/unauthorized-domain-id-mismatch') {
+        const currentDomain = window.location.hostname;
+        setError(`Domain ${currentDomain} belum terdaftar di Authorized Domains Proyek "${config.projectId}".`);
+        console.error('Unauthorized Domain Error Details:', {
+          currentDomain,
+          projectId: config.projectId,
+          errorCode: err.code,
+          errorMessage: err.message
+        });
       } else {
-        setError('Gagal masuk: ' + (err.code || 'Terjadi kesalahan'));
+        setError('Gagal masuk: ' + (err.code || err.message || 'Terjadi kesalahan'));
       }
     } finally {
       setLoading(false);

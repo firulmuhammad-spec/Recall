@@ -1,11 +1,7 @@
 import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  updatePassword as updateFirebasePassword,
   signOut as firebaseSignOut
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { auth } from './firebase';
 
 const SESSION_KEY = 'recall_last_seen';
 const THREE_MONTHS_MS = 3 * 30 * 24 * 60 * 60 * 1000;
