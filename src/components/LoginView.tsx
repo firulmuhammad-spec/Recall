@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Package, LogIn, AlertCircle } from 'lucide-react';
-import { signInWithGoogle, handleRedirectResult } from '../lib/firebase';
+import { signInWithGoogle } from '../lib/firebase';
 
 interface LoginViewProps {
   onLoginSuccess: () => void;
@@ -10,38 +10,27 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Check if we just returned from a redirect
-    setLoading(true);
-    handleRedirectResult()
-      .then((result) => {
-        if (result?.user) {
-          onLoginSuccess();
-        }
-      })
-      .catch((err) => {
-        console.error('Redirect error:', err);
-        if (err.code === 'auth/authorized-domain-id-mismatch') {
-          setError('Domain ini belum didaftarkan di Firebase Console. Silakan tambahkan domain Anda di Authorized Domains.');
-        } else {
-          setError('Gagal masuk: ' + err.message);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
-
   const handleGoogleLogin = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Extra precaution
+    e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await signInWithGoogle();
-      // Browser will redirect now...
+      const result = await signInWithGoogle();
+      if (result?.user) {
+        onLoginSuccess();
+      }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError('Terjadi kesalahan saat memulai sistem login.');
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Login dibatalkan. Silakan coba lagi.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('Popup diblokir browser. Izinkan popup untuk situs ini.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError('Domain belum terdaftar di Firebase Authorized Domains.');
+      } else {
+        setError('Gagal masuk: ' + (err.code || 'Terjadi kesalahan'));
+      }
+    } finally {
       setLoading(false);
     }
   };
