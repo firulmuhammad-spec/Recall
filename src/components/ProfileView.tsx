@@ -1,6 +1,7 @@
 import React from 'react';
-import { Shield, User, Mail, Calendar, Clock } from 'lucide-react';
+import { Shield, User, Calendar, Clock, LogOut } from 'lucide-react';
 import { UserProfile } from '../types';
+import { AuthService } from '../lib/authService';
 
 interface ProfileViewProps {
   userProfile: UserProfile;
@@ -9,9 +10,17 @@ interface ProfileViewProps {
 export const ProfileView: React.FC<ProfileViewProps> = ({ userProfile }) => {
   return (
     <div className="p-6 lg:p-10 max-w-2xl mx-auto">
-      <div className="mb-10">
-        <h2 className="text-3xl font-black tracking-tight text-gray-900">Your Profile</h2>
-        <p className="text-gray-500 font-medium">Informasi akun Anda di sistem RECALL.</p>
+      <div className="mb-10 flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-black tracking-tight text-gray-900">Your Profile</h2>
+          <p className="text-gray-500 font-medium">Informasi akun Anda di sistem RECALL.</p>
+        </div>
+        <button 
+          onClick={() => AuthService.logout()}
+          className="lg:hidden flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors"
+        >
+          <LogOut size={18} /> Logout
+        </button>
       </div>
 
       <div className="grid gap-6">
@@ -60,13 +69,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userProfile }) => {
             </div>
           </div>
 
-          <div className="mt-10 pt-8 border-t border-gray-100">
+          <div className="mt-10 pt-8 border-t border-gray-100 space-y-4">
             <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100/50">
               <h4 className="font-bold text-blue-900 text-sm mb-2">Google Authenticated</h4>
               <p className="text-xs text-blue-700/70 font-medium leading-relaxed">
                 Akun Anda diamankan melalui Google. Untuk mengganti password atau mengelola keamanan, silakan gunakan pengaturan Akun Google Anda.
               </p>
             </div>
+            
+            <button 
+              onClick={() => AuthService.logout()}
+              className="w-full flex items-center justify-center gap-3 p-5 rounded-2xl font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-all border border-red-100"
+            >
+              <LogOut size={20} /> Logout from System
+            </button>
           </div>
         </div>
       </div>

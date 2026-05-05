@@ -12,8 +12,8 @@ import {
   getDoc,
   setDoc
 } from 'firebase/firestore';
-import { db, auth } from './firebase';
-import { RecallPackage, AppSettings } from '../types';
+import { db, auth, enableNetwork, getDocFromServer } from './firebase';
+import { RecallPackage, AppSettings, UserProfile } from '../types';
 
 enum OperationType {
   CREATE = 'create',
@@ -37,8 +37,25 @@ interface FirestoreErrorInfo {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const message = error instanceof Error ? error.message : String(error);
+  
+  // Special handling for missing indexes
+  if (message.includes('index') || message.includes('FAILED_PRECONDITION')) {
+    console.warn('--- FIRESTORE INDEX REQUIRED ---');
+    console.warn('The current query requires a composite index.');
+    console.warn('Please follow this link to create it:');
+    const indexUrl = message.match(/https:\/\/console\.firebase\.google\.com[^\s"]+/);
+    if (indexUrl) {
+      console.warn(indexUrl[0]);
+    } else {
+      console.warn('Check the full error object for the index creation URL.');
+    }
+    console.warn('---------------------------------');
+    return; // Don't throw for index errors, just warn
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: message,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -106,18 +123,21 @@ export const FirestoreService = {
     }
   },
 
-  getSettings: async (): Promise<AppSettings | null> => {
+  getSettings: (callback: (settings: AppSettings | null) => void) => {
     const path = 'settings/config';
-    try {
-      const docSnap = await getDoc(doc(db, 'settings', 'config'));
-      if (docSnap.exists()) {
-        return docSnap.data() as AppSettings;
+    return onSnapshot(doc(db, 'settings', 'config'), (snapshot) => {
+      if (snapshot.exists()) {
+        callback({ id: snapshot.id, ...snapshot.data() } as AppSettings);
+      } else {
+        callback(null);
       }
-      return null;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.GET, path);
-      return null;
-    }
+    }, (error) => {
+      if (error.message?.includes('offline')) {
+        console.warn("Settings listener offline");
+      } else {
+        handleFirestoreError(error, OperationType.GET, path);
+      }
+    });
   },
 
   saveSettings: async (settings: Omit<AppSettings, 'id'>) => {
@@ -138,10 +158,28 @@ export const FirestoreService = {
         return { id: docSnap.id, ...docSnap.data() };
       }
       return null;
-    } catch (error) {
+    } catch (error: any) {
       handleFirestoreError(error, OperationType.GET, path);
       return null;
     }
+  },
+
+  subscribeToProfile: (uid: string, callback: (profile: UserProfile | null) => void) => {
+    const path = `users/${uid}`;
+    return onSnapshot(doc(db, 'users', uid), (snapshot) => {
+      if (snapshot.exists()) {
+        callback({ id: snapshot.id, ...snapshot.data() } as UserProfile);
+      } else {
+        callback(null);
+      }
+    }, (error) => {
+      // Don't throw for background updates if offline, just log
+      if (error.message?.includes('offline')) {
+        console.warn("Profile listener offline");
+      } else {
+        handleFirestoreError(error, OperationType.GET, path);
+      }
+    });
   },
 
   updateUserProfile: async (uid: string, data: any) => {

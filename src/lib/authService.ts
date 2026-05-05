@@ -13,17 +13,24 @@ export const AuthService = {
   },
 
   checkSession: async () => {
-    const lastSeen = localStorage.getItem(SESSION_KEY);
-    if (lastSeen) {
-      const lastSeenTime = parseInt(lastSeen, 10);
-      if (Date.now() - lastSeenTime > THREE_MONTHS_MS) {
-        await firebaseSignOut(auth);
-        localStorage.removeItem(SESSION_KEY);
-        return false;
+    try {
+      const lastSeen = localStorage.getItem(SESSION_KEY);
+      console.log("Checking session. Last seen:", lastSeen);
+      if (lastSeen) {
+        const lastSeenTime = parseInt(lastSeen, 10);
+        if (isNaN(lastSeenTime) || Date.now() - lastSeenTime > THREE_MONTHS_MS) {
+          console.warn("Session expired or corrupt. Logging out.");
+          await firebaseSignOut(auth);
+          localStorage.removeItem(SESSION_KEY);
+          return false;
+        }
       }
+      // Update last seen
+      localStorage.setItem(SESSION_KEY, Date.now().toString());
+      return true;
+    } catch (e) {
+      console.error("Error checking session/localStorage:", e);
+      return true; // Fallback to true if localStorage fails
     }
-    // Update last seen
-    localStorage.setItem(SESSION_KEY, Date.now().toString());
-    return true;
   }
 };

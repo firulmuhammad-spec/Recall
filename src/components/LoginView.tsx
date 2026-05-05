@@ -13,19 +13,28 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [useRedirect, setUseRedirect] = useState(false);
 
   useEffect(() => {
+    console.log("LoginView mounted. Current host:", window.location.hostname);
+    
     // Check for redirect result on load
     handleRedirectResult()
       .then((result) => {
         if (result?.user) {
+          console.log("Redirect success:", result.user.email);
           onLoginSuccess();
         }
       })
       .catch((err) => {
         console.error('Redirect result error:', err);
+        // Only show error if it's not a cancelled login
+        if (err.code !== 'auth/cancelled-popup-request') {
+          setError(`Redirect Error: ${err.message}`);
+        }
       });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("LoginView: onAuthStateChanged event:", user ? user.email : "null");
       if (user) {
+        console.log("LoginView detected user, calling onLoginSuccess...");
         onLoginSuccess();
       }
     });
@@ -36,18 +45,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    console.log(`Initialing Google ${type} login...`);
     
     try {
       if (type === 'popup') {
         const result = await signInWithGoogle();
         if (result?.user) {
+          console.log("Popup login resolved successfully:", result.user.email);
           onLoginSuccess();
         }
       } else {
+        console.log("Attempting redirect...");
         await signInWithGoogleRedirect();
       }
     } catch (err: any) {
-      console.error('Login error details:', err);
+      console.error('Login action error:', err);
       const errorCode = err.code;
       
       if (errorCode === 'auth/popup-closed-by-user') {
@@ -55,15 +67,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       } else if (errorCode === 'auth/popup-blocked') {
         setError('Popup diblokir browser. Mengalihkan ke mode Redirect...');
         setUseRedirect(true);
-        // Automatically try redirect if popup is blocked
-        setTimeout(() => signInWithGoogleRedirect(), 2000);
+        setTimeout(() => {
+          signInWithGoogleRedirect().catch(e => {
+             console.error("Auto-redirect fail:", e);
+             setError("Gagal redirect otomatis. Klik login kembali.");
+          });
+        }, 1500);
       } else if (errorCode === 'auth/unauthorized-domain' || errorCode === 'auth/unauthorized-domain-id-mismatch') {
         setError(`Domain ${window.location.hostname} belum terdaftar di Firebase Authorized Domains.`);
       } else if (errorCode === 'auth/internal-error' || errorCode === 'auth/network-request-failed') {
-        setError('Gagal menghubungkan ke Google. Pastikan domain sudah terdaftar dan tidak diblokir browser.');
-        setUseRedirect(true); // Suggest redirect for internal errors
+        setError('Gagal menghubungkan. Gunakan mode Redirect jika masalah berlanjut.');
+        setUseRedirect(true);
       } else {
-        setError(`Gagal: ${errorCode || 'Error'}`);
+        setError(`Gagal (${errorCode || 'Error'}): ${err.message || ''}`);
       }
     } finally {
       setLoading(false);

@@ -20,6 +20,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [packages, setPackages] = useState<RecallPackage[]>([]);
+  const [isOffline, setIsOffline] = useState(false);
   const [settings, setSettings] = useState<AppSettings>({
     id: 'settings',
     categories: ["Pekerjaan", "Rumah", "Finance", "Kesehatan", "Lainnya"],
@@ -48,41 +49,80 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const handleOnline = () => {
+      console.log("Browser status: Online");
+      setIsOffline(false);
+    };
+    const handleOffline = () => {
+      console.log("Browser status: Offline");
+      setIsOffline(true);
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Initial sync
+    if (!navigator.onLine) setIsOffline(true);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("Setting up App auth listener...");
     const unsubscribeAuth = onAuthStateChanged(auth, async (currUser) => {
-      if (currUser) {
-        // Enforce 3-month session check
-        const isValid = await AuthService.checkSession();
-        if (!isValid) {
-          setUser(null);
+      console.log("Auth state changed:", currUser ? `User logged in: ${currUser.email}` : "No user");
+      
+      try {
+        if (currUser) {
+          setLoading(true);
+          
+          const isValid = await AuthService.checkSession();
+          if (!isValid) {
+            setUser(null);
+            setUserProfile(null);
+            setLoading(false);
+            return;
+          }
+
+          // Use real-time subscription for profile to handle intermittent offline states
+          FirestoreService.subscribeToProfile(currUser.uid, async (profile) => {
+            if (!profile) {
+              console.log("No profile found, checking if we need to create one...");
+              const newProfile = {
+                username: currUser.email?.split('@')[0] || 'user',
+                displayName: currUser.displayName || 'User',
+                role: 'User' as const,
+                preferences: { viewMode: 'grid' as const, sortBy: 'newest' },
+                createdAt: serverTimestamp()
+              };
+              try {
+                await setDoc(doc(db, 'users', currUser.uid), newProfile);
+                // Subscription will trigger soon
+              } catch (e) {
+                console.error("Profile creation queued:", e);
+                // Set temporary profile so UI can render
+                setUserProfile({ id: currUser.uid, ...newProfile } as UserProfile);
+                setLoading(false);
+              }
+            } else {
+              setUserProfile(profile);
+              setIsOffline(false);
+              setLoading(false);
+            }
+          });
+        } else {
           setUserProfile(null);
-          setLoading(false);
-          return;
         }
-
-        let profile = await FirestoreService.getUserProfile(currUser.uid);
-        
-        // Auto-create profile if first time
-        if (!profile) {
-          const newProfile = {
-            username: currUser.email?.split('@')[0] || 'user',
-            displayName: currUser.displayName || 'User',
-            role: 'User' as const,
-            preferences: {
-              viewMode: 'grid' as const,
-              sortBy: 'newest'
-            },
-            createdAt: serverTimestamp()
-          };
-          await setDoc(doc(db, 'users', currUser.uid), newProfile);
-          profile = { id: currUser.uid, ...newProfile };
-        }
-
-        setUserProfile(profile as UserProfile);
-      } else {
-        setUserProfile(null);
+        setUser(currUser);
+      } catch (err: any) {
+        console.error("Critical error in App auth listener:", err);
+        if (err.message?.includes('offline')) setIsOffline(true);
+      } finally {
+        setLoading(false);
+        console.log("App auth initialization finished.");
       }
-      setUser(currUser);
-      setLoading(false);
     });
 
     return () => unsubscribeAuth();
@@ -98,20 +138,72 @@ export default function App() {
       setPackages(data);
     });
 
-    const fetchSettings = async () => {
-      const data = await FirestoreService.getSettings();
-      if (data) setSettings(data);
-    };
-
-    fetchSettings();
+    const unsubscribeSettings = FirestoreService.getSettings(async (data) => {
+      if (!data) {
+        // If settings doc doesn't exist, create it once by an admin or first user
+        console.log("Settings not found in DB, using defaults");
+        // We don't auto-create global settings for every user to avoid write spam, 
+        // but we ensure the local state has the defaults (already in useState)
+      } else {
+        setSettings(data);
+      }
+    });
 
     return () => {
       if (unsubscribePackages) unsubscribePackages();
+      if (unsubscribeSettings) unsubscribeSettings();
     };
   }, [user]);
 
-  if (showSplash || (loading && !user)) {
+  if (showSplash || (loading && !isOffline)) {
     return <SplashScreen />;
+  }
+
+  if (isOffline && !userProfile) { // Show offline screen only if we don't even have a cached profile
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-white p-6 font-sans">
+        <div className="bg-red-50 p-6 rounded-3xl border border-red-100 flex flex-col items-center gap-4 text-center max-w-sm">
+          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+            <Package size={24} />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">Firestore is Offline</h2>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Aplikasi tidak dapat terhubung ke database. Cek koneksi internet Anda atau coba tombol di bawah ini.
+          </p>
+          <div className="flex flex-col w-full gap-2 mt-2">
+            <button 
+              onClick={async () => {
+                try {
+                  const { enableNetwork, db } = await import('./lib/firebase');
+                  await enableNetwork(db);
+                  setIsOffline(false);
+                  window.location.reload();
+                } catch (e) {
+                  window.location.reload();
+                }
+              }}
+              className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors"
+            >
+              Coba Reconnect & Refresh
+            </button>
+            <button 
+              onClick={async () => {
+                const { resetFirestore } = await import('./lib/firebase');
+                await resetFirestore();
+              }}
+              className="text-xs text-gray-400 font-medium hover:text-gray-600 transition-colors py-2"
+            >
+              Clear Cache & Full Reset
+            </button>
+          </div>
+          {!navigator.onLine && (
+            <p className="text-[10px] text-red-400 font-medium mt-2 italic">
+              Browser mendeteksi Anda benar-benar sedang Offline.
+            </p>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -241,9 +333,9 @@ export default function App() {
             <Settings 
               categories={settings.categories} 
               tags={settings.availableTags} 
-              onUpdate={async () => {
-                const data = await FirestoreService.getSettings();
-                if (data) setSettings(data);
+              onUpdate={() => {
+                // Subscription will handle state update automatically
+                console.log("Settings updated in DB");
               }} 
             />
           )}
