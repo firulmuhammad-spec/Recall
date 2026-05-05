@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, LogIn, AlertCircle } from 'lucide-react';
-import { signInWithGoogle, config } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { signInWithGoogle, signInWithGoogleRedirect, handleRedirectResult, config, auth } from '../lib/firebase';
 
 interface LoginViewProps {
   onLoginSuccess: () => void;
@@ -9,33 +10,60 @@ interface LoginViewProps {
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [useRedirect, setUseRedirect] = useState(false);
 
-  const handleGoogleLogin = async (e: React.MouseEvent) => {
+  useEffect(() => {
+    // Check for redirect result on load
+    handleRedirectResult()
+      .then((result) => {
+        if (result?.user) {
+          onLoginSuccess();
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect result error:', err);
+      });
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        onLoginSuccess();
+      }
+    });
+    return () => unsubscribe();
+  }, [onLoginSuccess]);
+
+  const handleLogin = async (e: React.MouseEvent, type: 'popup' | 'redirect') => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    
     try {
-      const result = await signInWithGoogle();
-      if (result?.user) {
-        onLoginSuccess();
+      if (type === 'popup') {
+        const result = await signInWithGoogle();
+        if (result?.user) {
+          onLoginSuccess();
+        }
+      } else {
+        await signInWithGoogleRedirect();
       }
     } catch (err: any) {
-      console.error('Login error:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Login dibatalkan. Silakan coba lagi.');
-      } else if (err.code === 'auth/popup-blocked') {
-        setError('Popup diblokir browser. Izinkan popup untuk situs ini.');
-      } else if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/unauthorized-domain-id-mismatch') {
-        const currentDomain = window.location.hostname;
-        setError(`Domain ${currentDomain} belum terdaftar di Authorized Domains Proyek "${config.projectId}".`);
-        console.error('Unauthorized Domain Error Details:', {
-          currentDomain,
-          projectId: config.projectId,
-          errorCode: err.code,
-          errorMessage: err.message
-        });
+      console.error('Login error details:', err);
+      const errorCode = err.code;
+      
+      if (errorCode === 'auth/popup-closed-by-user') {
+        setError('Login dibatalkan (Popup ditutup).');
+      } else if (errorCode === 'auth/popup-blocked') {
+        setError('Popup diblokir browser. Mengalihkan ke mode Redirect...');
+        setUseRedirect(true);
+        // Automatically try redirect if popup is blocked
+        setTimeout(() => signInWithGoogleRedirect(), 2000);
+      } else if (errorCode === 'auth/unauthorized-domain' || errorCode === 'auth/unauthorized-domain-id-mismatch') {
+        setError(`Domain ${window.location.hostname} belum terdaftar di Firebase Authorized Domains.`);
+      } else if (errorCode === 'auth/internal-error' || errorCode === 'auth/network-request-failed') {
+        setError('Gagal menghubungkan ke Google. Pastikan domain sudah terdaftar dan tidak diblokir browser.');
+        setUseRedirect(true); // Suggest redirect for internal errors
       } else {
-        setError('Gagal masuk: ' + (err.code || err.message || 'Terjadi kesalahan'));
+        setError(`Gagal: ${errorCode || 'Error'}`);
       }
     } finally {
       setLoading(false);
@@ -63,18 +91,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </div>
           )}
 
-          <button 
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white p-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95 disabled:bg-gray-300 disabled:shadow-none mt-4"
-          >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <LogIn size={20} />
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={(e) => handleLogin(e, useRedirect ? 'redirect' : 'popup')}
+              disabled={loading}
+              className="w-full bg-blue-600 text-white p-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95 disabled:bg-gray-300 disabled:shadow-none mt-4"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <LogIn size={20} />
+              )}
+              {loading ? 'Connecting...' : `Sign in with Google${useRedirect ? ' (Redirect Mode)' : ''}`}
+            </button>
+
+            {useRedirect && !loading && (
+              <button 
+                onClick={(e) => handleLogin(e, 'popup')}
+                className="text-sm text-blue-600 font-medium hover:underline"
+              >
+                Coba popup mode kembali
+              </button>
             )}
-            {loading ? 'Connecting...' : 'Sign in with Google'}
-          </button>
+          </div>
         </div>
 
         <div className="mt-12 pt-8 border-t border-gray-100">
