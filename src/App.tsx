@@ -1,24 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { LogIn, Plus, LayoutGrid, Settings as SettingsIcon, LogOut, Package } from 'lucide-react';
-import { auth, signInWithGoogle } from './lib/firebase';
+import { LogIn, Plus, LayoutGrid, Settings as SettingsIcon, LogOut, Package, Users, User as UserIcon } from 'lucide-react';
+import { auth } from './lib/firebase';
 import { FirestoreService } from './lib/firestoreService';
-import { RecallPackage, AppSettings } from './types';
+import { AuthService } from './lib/authService';
+import { RecallPackage, AppSettings, UserProfile } from './types';
 import { Dashboard } from './components/Dashboard';
 import { RecallForm } from './components/RecallForm';
 import { Settings } from './components/Settings';
+import { LoginView } from './components/LoginView';
+import { SplashScreen } from './components/SplashScreen';
+import { UserManager } from './components/UserManager';
+import { ProfileView } from './components/ProfileView';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [packages, setPackages] = useState<RecallPackage[]>([]);
   const [settings, setSettings] = useState<AppSettings>({
     id: 'settings',
     categories: ["Pekerjaan", "Rumah", "Finance", "Kesehatan", "Lainnya"],
     availableTags: ["#vibrasi", "#pengujian", "#riwayatkesehatan", "#dokumen", "#penting"]
   });
-  const [view, setView] = useState<'dashboard' | 'add' | 'settings'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'add' | 'settings' | 'users' | 'profile'>('dashboard');
   const [editingPackage, setEditingPackage] = useState<RecallPackage | null>(null);
 
   const clientSuggestions = useMemo(() => {
@@ -26,28 +32,37 @@ export default function App() {
     return Array.from(new Set(clients)).sort();
   }, [packages]);
 
-  const handleEdit = (pkg: RecallPackage) => {
-    setEditingPackage(pkg);
-    setView('add');
-  };
-
-  const handleAddNew = () => {
-    setEditingPackage(null);
-    setView('add');
-  };
-
-  const handleLogin = async () => {
-    if (isLoggingIn) return;
-    setIsLoggingIn(true);
-    try {
-      await signInWithGoogle();
-    } finally {
-      setIsLoggingIn(false);
+  // Sync preferences to Firestore (debounced)
+  const savePreferences = async (viewMode: string, sortBy: string) => {
+    if (user && userProfile) {
+      await FirestoreService.updateUserProfile(user.uid, {
+        preferences: { viewMode, sortBy }
+      });
     }
   };
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currUser) => {
+    const timer = setTimeout(() => setShowSplash(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currUser) => {
+      if (currUser) {
+        // Enforce 3-month session check
+        const isValid = await AuthService.checkSession();
+        if (!isValid) {
+          setUser(null);
+          setUserProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        const profile = await FirestoreService.getUserProfile(currUser.uid);
+        setUserProfile(profile as UserProfile);
+      } else {
+        setUserProfile(null);
+      }
       setUser(currUser);
       setLoading(false);
     });
@@ -77,45 +92,23 @@ export default function App() {
     };
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400 font-medium animate-pulse">Initializing archive...</p>
-        </div>
-      </div>
-    );
+  if (showSplash || (loading && !user)) {
+    return <SplashScreen />;
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full">
-          <div className="w-24 h-24 bg-blue-600 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-600/30">
-            <Package className="text-white" size={48} />
-          </div>
-          <h1 className="text-5xl font-black tracking-tighter text-gray-900 mb-4">RECALL</h1>
-          <p className="text-gray-500 mb-12 text-lg">Your intelligent personal knowledge base and smart archive for essential data.</p>
-          
-          <button 
-            onClick={handleLogin}
-            disabled={isLoggingIn}
-            className="w-full bg-gray-900 text-white p-5 rounded-3xl font-bold flex items-center justify-center gap-4 hover:bg-black transition-all shadow-xl active:scale-95 disabled:bg-gray-400 disabled:shadow-none"
-          >
-            {isLoggingIn ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <LogIn size={20} />
-            )}
-            {isLoggingIn ? 'Connecting...' : 'Sign in with Google'}
-          </button>
-          
-          <p className="mt-8 text-xs text-gray-400">Securely stored on Cloud Firestore</p>
-        </div>
-      </div>
-    );
+    return <LoginView onLoginSuccess={() => setView('dashboard')} />;
   }
+
+  const handleEdit = (pkg: RecallPackage) => {
+    setEditingPackage(pkg);
+    setView('add');
+  };
+
+  const handleAddNew = () => {
+    setEditingPackage(null);
+    setView('add');
+  };
 
   return (
     <div className="flex h-screen bg-[#f1f5f9] text-[#1e293b] overflow-hidden font-sans">
@@ -141,39 +134,51 @@ export default function App() {
           >
             <LayoutGrid size={18} /> Dashboard
           </button>
+          
+          {userProfile?.role === 'Admin' && (
+            <button 
+              onClick={() => setView('users')}
+              className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
+                view === 'users' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
+              }`}
+            >
+              <Users size={18} /> User Management
+            </button>
+          )}
+
+          <button 
+            onClick={() => setView('profile')}
+            className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
+              view === 'profile' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
+            }`}
+          >
+            <UserIcon size={18} /> My Profile
+          </button>
+
           <button 
             onClick={() => setView('settings')}
             className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
               view === 'settings' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
             }`}
           >
-            <SettingsIcon size={18} /> Settings
+            <SettingsIcon size={18} /> Global Settings
           </button>
+          
           <button 
-            onClick={() => auth.signOut()}
+            onClick={() => AuthService.logout()}
             className="flex items-center gap-3 p-3 rounded-lg font-medium text-sm text-[#64748b] hover:bg-red-50 hover:text-red-500 transition-all mt-4"
           >
             <LogOut size={18} /> Logout
           </button>
         </nav>
 
-        <div className="mt-auto border-t border-gray-100 pt-6">
-          <span className="text-[12px] font-bold text-[#94a3b8] uppercase tracking-wider mb-4 block">Categories</span>
-          <div className="flex flex-col gap-3">
-            {settings.categories.slice(0, 5).map(cat => (
-              <label key={cat} className="flex items-center gap-2.5 text-sm font-medium text-[#475569] cursor-pointer group">
-                <input type="checkbox" checked className="w-4 h-4 rounded border-gray-300 text-[#2563eb] focus:ring-[#2563eb]" readOnly />
-                <span className="group-hover:text-[#2563eb] transition-colors">{cat}</span>
-              </label>
-            ))}
+        <div className="mt-auto flex items-center gap-3 border-t border-gray-100 pt-6">
+          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold uppercase">
+            {userProfile?.displayName?.charAt(0) || user.email?.charAt(0)}
           </div>
-        </div>
-
-        <div className="mt-8 flex items-center gap-3 border-t border-gray-100 pt-6">
-          <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-9 h-9 rounded-full" />
           <div className="overflow-hidden">
-            <p className="text-xs font-bold text-[#1e293b] truncate leading-tight">{user.displayName}</p>
-            <p className="text-[10px] text-[#94a3b8] truncate">{user.email}</p>
+            <p className="text-xs font-bold text-[#1e293b] truncate leading-tight">{userProfile?.displayName || user.displayName}</p>
+            <p className="text-[10px] text-[#94a3b8] truncate">{userProfile?.role || 'User'}</p>
           </div>
         </div>
       </aside>
@@ -185,18 +190,23 @@ export default function App() {
           <div className="text-[20px] font-black tracking-tighter text-[#2563eb]" onClick={() => setView('dashboard')}>
             RECALL
           </div>
-          <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-8 h-8 rounded-full" />
+          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs" onClick={() => setView('profile')}>
+            {userProfile?.displayName?.charAt(0) || user.email?.charAt(0)}
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto scrollbar-hide">
           {view === 'dashboard' && (
-          <Dashboard 
-            items={packages} 
-            categories={settings.categories} 
-            availableTags={settings.availableTags}
-            onEdit={handleEdit} 
-          />
-        )}
+            <Dashboard 
+              items={packages} 
+              categories={settings.categories} 
+              availableTags={settings.availableTags}
+              onEdit={handleEdit}
+              initialViewMode={userProfile?.preferences?.viewMode}
+              initialSortBy={userProfile?.preferences?.sortBy as any}
+              onStateChange={(v, s) => savePreferences(v, s)}
+            />
+          )}
           {view === 'add' && (
             <RecallForm 
               categories={settings.categories} 
@@ -219,6 +229,8 @@ export default function App() {
               }} 
             />
           )}
+          {view === 'users' && <UserManager />}
+          {view === 'profile' && userProfile && <ProfileView userProfile={userProfile} />}
         </div>
 
         {/* Mobile Bottom Nav */}
@@ -236,6 +248,13 @@ export default function App() {
           >
             <Plus size={20} />
             <span className="text-[10px] font-bold">New</span>
+          </button>
+          <button 
+            onClick={() => setView('profile')}
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'profile' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b]'}`}
+          >
+            <UserIcon size={20} />
+            <span className="text-[10px] font-bold">You</span>
           </button>
           <button 
             onClick={() => setView('settings')}

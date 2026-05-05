@@ -22,3 +22,15 @@ export interface AppSettings {
   categories: string[];
   availableTags: string[];
 }
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  role: 'Admin' | 'User';
+  preferences: {
+    viewMode: 'grid' | 'list' | 'gallery';
+    sortBy: string;
+  };
+  createdAt: any;
+}

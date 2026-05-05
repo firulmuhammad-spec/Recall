@@ -1,0 +1,17 @@
+{
+  "name": "RECALL Personal Archive",
+  "short_name": "RECALL",
+  "description": "Intelligent personal knowledge base and smart archive.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2991/2991148.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

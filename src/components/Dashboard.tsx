@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, LayoutGrid, List, Image as ImageIcon, ChevronDown, ChevronUp, X, Check, ArrowUpDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Card } from './Card';
@@ -10,19 +10,43 @@ interface DashboardProps {
   categories: string[];
   availableTags: string[];
   onEdit: (pkg: RecallPackage) => void;
+  initialViewMode?: ViewMode;
+  initialSortBy?: SortOption;
+  onStateChange?: (viewMode: ViewMode, sortBy: SortOption) => void;
 }
 
 type ViewMode = 'grid' | 'list' | 'gallery';
 type SortOption = 'newest' | 'oldest' | 'az' | 'za' | 'urgent';
 
-export const Dashboard: React.FC<DashboardProps> = ({ items, categories, availableTags, onEdit }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  items, 
+  categories, 
+  availableTags, 
+  onEdit,
+  initialViewMode = 'grid',
+  initialSortBy = 'newest',
+  onStateChange
+}) => {
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("");
   const [includeTags, setIncludeTags] = useState<string[]>([]);
   const [excludeTags, setExcludeTags] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [sortBy, setSortBy] = useState<SortOption>(initialSortBy);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  // Sync state changes back to parent
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange(viewMode, sortBy);
+    }
+  }, [viewMode, sortBy]);
+
+  // Update internal state if props change (e.g. on mount from Firestore)
+  useEffect(() => {
+    if (initialViewMode) setViewMode(initialViewMode);
+    if (initialSortBy) setSortBy(initialSortBy);
+  }, [initialViewMode, initialSortBy]);
 
   const processedItems = useMemo(() => {
     const now = new Date();

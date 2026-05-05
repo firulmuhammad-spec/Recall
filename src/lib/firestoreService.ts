@@ -127,5 +127,43 @@ export const FirestoreService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
+  },
+
+  // User Profile
+  getUserProfile: async (uid: string) => {
+    const path = `users/${uid}`;
+    try {
+      const docSnap = await getDoc(doc(db, 'users', uid));
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+      }
+      return null;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, path);
+      return null;
+    }
+  },
+
+  updateUserProfile: async (uid: string, data: any) => {
+    const path = `users/${uid}`;
+    try {
+      await updateDoc(doc(db, 'users', uid), data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  },
+
+  getAllUsers: async (callback: (users: any[]) => void) => {
+    const path = 'users';
+    const q = query(collection(db, path));
+    return onSnapshot(q, (snapshot) => {
+      const users = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      callback(users);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
   }
 };

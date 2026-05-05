@@ -29,6 +29,25 @@
         "availableTags": { "type": "array" }
       },
       "required": ["categories", "availableTags"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile with preferences and credentials",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "User"] },
+        "preferences": {
+          "type": "object",
+          "properties": {
+            "viewMode": { "type": "string" },
+            "sortBy": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["username", "displayName", "role"]
     }
   },
   "firestore": {
@@ -39,6 +58,10 @@
     "/settings/config": {
       "schema": "AppSettings",
       "description": "Single document for global config"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User specific profiles"
     }
   }
 }
