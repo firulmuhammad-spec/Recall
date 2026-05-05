@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "RecallPackage": {
+      "title": "Recall Package",
+      "description": "A package of archived data containing photos and metadata",
+      "type": "object",
+      "properties": {
+        "judul": { "type": "string" },
+        "deskripsi": { "type": "string" },
+        "kategori": { "type": "string" },
+        "klien": { "type": "string" },
+        "tags": { "type": "array" },
+        "foto": { "type": "array" },
+        "status": { "type": "string", "enum": ["Arsip", "Menunggu", "Urgent"] },
+        "tanggalInput": { "type": "string", "format": "date-time" },
+        "tanggalPengambilan": { "type": "string" },
+        "lokasi": { "type": "string" },
+        "bulanTahunTarget": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["judul", "deskripsi", "kategori", "status", "tanggalInput", "ownerId"]
+    },
+    "AppSettings": {
+      "title": "Application Settings",
+      "description": "Global settings for categories and tags",
+      "type": "object",
+      "properties": {
+        "categories": { "type": "array" },
+        "availableTags": { "type": "array" }
+      },
+      "required": ["categories", "availableTags"]
+    }
+  },
+  "firestore": {
+    "/packages/{packageId}": {
+      "schema": "RecallPackage",
+      "description": "Main collection for recall packages"
+    },
+    "/settings/config": {
+      "schema": "AppSettings",
+      "description": "Single document for global config"
+    }
+  }
+}
