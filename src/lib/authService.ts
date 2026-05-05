@@ -61,6 +61,9 @@ export const AuthService = {
       { username: 'zahra', password: '123', displayName: 'Zahra', role: 'User' }
     ];
 
+    let successCount = 0;
+    let errors: string[] = [];
+
     for (const u of defaults) {
       const email = `${u.username}@recall.local`;
       try {
@@ -77,15 +80,21 @@ export const AuthService = {
           },
           createdAt: serverTimestamp()
         });
+        successCount++;
         console.log(`Seeded user: ${u.username}`);
       } catch (err: any) {
         if (err.code === 'auth/email-already-in-use') {
-          // Already exists, skip
           console.log(`User ${u.username} already exists`);
+          successCount++;
         } else {
           console.error(`Error seeding ${u.username}:`, err);
+          errors.push(err.code || err.message);
         }
       }
+    }
+
+    if (successCount === 0 && errors.length > 0) {
+      throw new Error(errors[0]);
     }
   }
 };

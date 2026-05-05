@@ -22,8 +22,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     } catch (err: any) {
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('Username atau password salah.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('Error: Metode Email/Password belum diaktifkan di Firebase Console.');
       } else {
-        setError('Terjadi kesalahan. Pastikan akun sudah ada.');
+        setError('Sistem belum siap. Gunakan tombol Setup di bawah.');
       }
     } finally {
       setLoading(false);
@@ -34,9 +36,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     try {
       await AuthService.seedDefaultUsers();
-      alert('Default users seeded! You can now login with: admin/123, firul/123, or zahra/123');
-    } catch (err) {
-      alert('Error seeding users. Make sure Email/Password auth is enabled in Firebase Console.');
+      alert('Berhasil! Akun default telah dibuat. Silakan login dengan: admin, firul, atau zahra (Password: 123)');
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === 'auth/operation-not-allowed') {
+        alert('Gagal: Metode login Email/Password BELUM DIAKTIFKAN di Firebase Console. Silakan aktifkan di menu Authentication -> Sign-in Method.');
+      } else {
+        alert('Ada masalah saat membuat akun: ' + err.message);
+      }
     } finally {
       setLoading(false);
     }
