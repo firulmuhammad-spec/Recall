@@ -55,7 +55,7 @@ export const Settings: React.FC<SettingsProps> = ({ categories, tags, onUpdate }
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 pt-10 pb-40">
       <div className="bg-white rounded-[32px] shadow-sm p-8">
         <h2 className="text-2xl font-black mb-8">APP SETTINGS</h2>
         

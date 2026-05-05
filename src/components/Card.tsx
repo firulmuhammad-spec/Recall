@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, User, Trash2, AlertCircle, Pencil, X, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, User, Trash2, AlertCircle, Pencil, X, Maximize2, ChevronLeft, ChevronRight, Share2, Download, Loader2 } from 'lucide-react';
 import { RecallPackage } from '../types';
+import { ExportCard } from './ExportCard';
+import { toPng } from 'html-to-image';
 
 interface CardProps {
   item: RecallPackage & { effectiveStatus?: string };
@@ -13,6 +15,8 @@ interface CardProps {
 export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = 'grid' }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const exportRef = React.useRef<HTMLDivElement>(null);
   const isUrgent = item.effectiveStatus === 'Urgent';
 
   const nextImage = (e: React.MouseEvent) => {
@@ -23,6 +27,31 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCurrentImgIndex((prev) => (prev - 1 + item.foto.length) % item.foto.length);
+  };
+
+  const handleExport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!exportRef.current) return;
+    
+    setIsExporting(true);
+    try {
+      // Use a timeout to ensure component is rendered fully if it was just mounted
+      // But here it is fixed position anyway
+      const dataUrl = await toPng(exportRef.current, {
+        cacheBust: true,
+        quality: 1,
+        pixelRatio: 2, // Higher resolution
+      });
+      
+      const link = document.createElement('a');
+      link.download = `RECALL-${item.judul.replace(/\s+/g, '-').toUpperCase()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to export image:', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -152,6 +181,14 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
            </div>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+           <button 
+             onClick={handleExport}
+             disabled={isExporting}
+             className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+             title="Download Image"
+           >
+              {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+           </button>
            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
               <Pencil size={14} />
            </button>
@@ -275,6 +312,14 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
             </div>
             <div className="flex items-center gap-2">
               <button 
+                onClick={handleExport}
+                disabled={isExporting}
+                className="text-gray-300 hover:text-blue-500 transition-colors disabled:opacity-50"
+                title="Download as Image"
+              >
+                {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              </button>
+              <button 
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit();
@@ -295,6 +340,9 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
           </div>
         </div>
       </motion.div>
+
+      {/* Hidden component for export rendering */}
+      <ExportCard item={item} exportRef={exportRef} />
 
       {/* Fullscreen Preview Modal */}
       <AnimatePresence>

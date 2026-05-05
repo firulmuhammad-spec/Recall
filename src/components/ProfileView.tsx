@@ -17,9 +17,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userProfile }) => {
         </div>
         <button 
           onClick={() => AuthService.logout()}
-          className="lg:hidden flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors"
+          className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold text-sm hover:bg-red-100 transition-all active:scale-95 shadow-sm border border-red-100"
         >
-          <LogOut size={18} /> Logout
+          <LogOut size={20} /> Logout
         </button>
       </div>
 
@@ -69,20 +69,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userProfile }) => {
             </div>
           </div>
 
-          <div className="mt-10 pt-8 border-t border-gray-100 space-y-4">
+          <div className="mt-10 pt-8 border-t border-gray-100">
             <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100/50">
               <h4 className="font-bold text-blue-900 text-sm mb-2">Google Authenticated</h4>
               <p className="text-xs text-blue-700/70 font-medium leading-relaxed">
                 Akun Anda diamankan melalui Google. Untuk mengganti password atau mengelola keamanan, silakan gunakan pengaturan Akun Google Anda.
               </p>
             </div>
-            
-            <button 
-              onClick={() => AuthService.logout()}
-              className="w-full flex items-center justify-center gap-3 p-5 rounded-2xl font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-all border border-red-100"
-            >
-              <LogOut size={20} /> Logout from System
-            </button>
           </div>
         </div>
       </div>

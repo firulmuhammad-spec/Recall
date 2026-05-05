@@ -73,10 +73,10 @@ export const FirestoreService = {
   getPackages: (callback: (packages: RecallPackage[]) => void) => {
     if (!auth.currentUser) return;
     const path = 'packages';
+    // Simplified query to avoid immediate need for composite index
     const q = query(
       collection(db, path),
-      where('ownerId', '==', auth.currentUser.uid),
-      orderBy('tanggalInput', 'desc')
+      where('ownerId', '==', auth.currentUser.uid)
     );
 
     return onSnapshot(q, (snapshot) => {
@@ -84,7 +84,20 @@ export const FirestoreService = {
         id: doc.id,
         ...doc.data()
       })) as RecallPackage[];
-      callback(packages);
+      
+      // Sort on client side to ensure data shows up even without index
+      const sortedPackages = packages.sort((a, b) => {
+        const getTime = (val: any) => {
+          if (!val) return 0;
+          if (val instanceof Date) return val.getTime();
+          if (typeof val.toMillis === 'function') return val.toMillis();
+          if (val.seconds) return val.seconds * 1000;
+          return 0;
+        };
+        return getTime(b.tanggalInput) - getTime(a.tanggalInput);
+      });
+      
+      callback(sortedPackages);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, path);
     });

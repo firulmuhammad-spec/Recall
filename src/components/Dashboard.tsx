@@ -84,15 +84,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     // Sorting
     result.sort((a, b) => {
+      const getTimestamp = (val: any) => {
+        if (!val) return Date.now() / 1000; // Assume current time for pending server timestamps
+        if (typeof val.toMillis === 'function') return val.toMillis() / 1000;
+        if (val.seconds) return val.seconds;
+        if (val instanceof Date) return val.getTime() / 1000;
+        return 0;
+      };
+
       switch (sortBy) {
         case 'newest':
-          const timeANew = (a.tanggalInput as any)?.seconds || new Date(a.tanggalInput as any).getTime() / 1000;
-          const timeBNew = (b.tanggalInput as any)?.seconds || new Date(b.tanggalInput as any).getTime() / 1000;
-          return timeBNew - timeANew;
+          return getTimestamp(b.tanggalInput) - getTimestamp(a.tanggalInput);
         case 'oldest':
-          const timeAOld = (a.tanggalInput as any)?.seconds || new Date(a.tanggalInput as any).getTime() / 1000;
-          const timeBOld = (b.tanggalInput as any)?.seconds || new Date(b.tanggalInput as any).getTime() / 1000;
-          return timeAOld - timeBOld;
+          return getTimestamp(a.tanggalInput) - getTimestamp(b.tanggalInput);
         case 'az':
           return a.judul.localeCompare(b.judul);
         case 'za':
@@ -101,9 +105,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           const urgencyScore = (s: string | undefined) => s === 'Urgent' ? 2 : s === 'Menunggu' ? 1 : 0;
           const diff = urgencyScore(b.effectiveStatus) - urgencyScore(a.effectiveStatus);
           if (diff !== 0) return diff;
-          const tA = (a.tanggalInput as any)?.seconds || 0;
-          const tB = (b.tanggalInput as any)?.seconds || 0;
-          return tB - tA;
+          return getTimestamp(b.tanggalInput) - getTimestamp(a.tanggalInput);
         default:
           return 0;
       }

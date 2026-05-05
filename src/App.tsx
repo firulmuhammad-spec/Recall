@@ -257,15 +257,6 @@ export default function App() {
           )}
 
           <button 
-            onClick={() => setView('profile')}
-            className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
-              view === 'profile' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
-            }`}
-          >
-            <UserIcon size={18} /> My Profile
-          </button>
-
-          <button 
             onClick={() => setView('settings')}
             className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
               view === 'settings' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
@@ -282,30 +273,42 @@ export default function App() {
           </button>
         </nav>
 
-        <div className="mt-auto flex items-center gap-3 border-t border-gray-100 pt-6">
-          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold uppercase">
-            {userProfile?.displayName?.charAt(0) || user.email?.charAt(0)}
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-xs font-bold text-[#1e293b] truncate leading-tight">{userProfile?.displayName || user.displayName}</p>
-            <p className="text-[10px] text-[#94a3b8] truncate">{userProfile?.role || 'User'}</p>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Mobile Header */}
-        <header className="lg:hidden h-16 bg-white border-b border-[#e2e8f0] px-4 flex items-center justify-between shrink-0">
-          <div className="text-[20px] font-black tracking-tighter text-[#2563eb]" onClick={() => setView('dashboard')}>
+        {/* Global Header */}
+        <header className="h-16 bg-white border-b border-[#e2e8f0] px-6 lg:px-8 flex items-center justify-between shrink-0 z-40">
+          <div className="lg:hidden text-[20px] font-black tracking-tighter text-[#2563eb]" onClick={() => setView('dashboard')}>
             RECALL
           </div>
-          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs" onClick={() => setView('profile')}>
-            {userProfile?.displayName?.charAt(0) || user.email?.charAt(0)}
+          <div className="hidden lg:block text-xs font-bold text-gray-400 uppercase tracking-widest">
+            {view === 'dashboard' ? 'Digital Archive Base' : 
+             view === 'add' ? (editingPackage ? 'Update Archive' : 'New Archive Entry') :
+             view === 'settings' ? 'System Configuration' :
+             view === 'users' ? 'User Administration' : 'Account Intelligence'}
+          </div>
+          <div className="flex items-center gap-4">
+            {isOffline && (
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-500 text-[10px] font-bold rounded-full border border-red-100">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> Offline Mode
+              </span>
+            )}
+            <button 
+              onClick={() => setView('profile')}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                view === 'profile' ? 'ring-2 ring-blue-500 ring-offset-2' : 'hover:scale-105'
+              } ${userProfile?.role === 'Admin' ? 'bg-indigo-600 text-white' : 'bg-blue-100 text-blue-600'}`}
+              title="My Profile"
+            >
+              <div className="font-bold text-xs">
+                {userProfile?.displayName?.charAt(0) || user.email?.charAt(0)}
+              </div>
+            </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 overflow-y-auto scrollbar-hide pb-40 lg:pb-20">
           {view === 'dashboard' && (
             <Dashboard 
               items={packages} 
@@ -358,13 +361,6 @@ export default function App() {
           >
             <Plus size={20} />
             <span className="text-[10px] font-bold">New</span>
-          </button>
-          <button 
-            onClick={() => setView('profile')}
-            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'profile' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b]'}`}
-          >
-            <UserIcon size={20} />
-            <span className="text-[10px] font-bold">You</span>
           </button>
           <button 
             onClick={() => setView('settings')}

@@ -313,7 +313,7 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 pt-10 pb-40">
       <div className="bg-white rounded-[32px] shadow-2xl shadow-blue-900/10 overflow-hidden">
         {/* Header */}
         <div className="bg-blue-600 p-8 text-white">
