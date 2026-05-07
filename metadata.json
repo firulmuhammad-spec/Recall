@@ -1,6 +1,6 @@
 {
-  "name": "Recall",
-  "description": "A personal knowledge base and smart archive for photos and documents with smart status logic and image compression.",
+  "name": "RECALL - Archive System",
+  "description": "Smart personal archive for images and data, featuring status-based reminders, user management, and advanced filtering.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
