@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { Settings as SettingsIcon, LogOut, Package, Users, User as UserIcon, Trash2, Bell, LayoutGrid, Plus } from 'lucide-react';
+import { Settings as SettingsIcon, LogOut, Package, Users, User as UserIcon, Trash2, Bell, LayoutGrid, Plus, Moon, Sun } from 'lucide-react';
 import { auth, db } from './lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { FirestoreService } from './lib/firestoreService';
@@ -29,6 +29,30 @@ export default function App() {
   });
   const [view, setView] = useState<'dashboard' | 'add' | 'settings' | 'users' | 'profile' | 'trash'>('dashboard');
   const [editingPackage, setEditingPackage] = useState<RecallPackage | null>(null);
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(prev => !prev);
+  };
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   const clientSuggestions = useMemo(() => {
     const clients = packages.map(p => p.klien).filter((k): k is string => !!k);
@@ -251,11 +275,19 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f1f5f9] text-[#1e293b] overflow-hidden font-sans">
+    <div className={`flex h-screen bg-[#f1f5f9] dark:bg-[#0f172a] text-[#1e293b] dark:text-[#f1f5f9] overflow-hidden font-sans`}>
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex w-[280px] bg-white border-r border-[#e2e8f0] p-6 flex-col gap-6 shrink-0">
-        <div className="text-[24px] font-black tracking-tighter text-[#2563eb] mb-2 leading-none cursor-pointer" onClick={() => setView('dashboard')}>
-          RECALL
+      <aside className="hidden lg:flex w-[280px] bg-white dark:bg-[#1e293b] border-r border-[#e2e8f0] dark:border-[#334155] p-6 flex-col gap-6 shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[24px] font-black tracking-tighter text-[#2563eb] leading-none cursor-pointer" onClick={() => setView('dashboard')}>
+            RECALL
+          </div>
+          <button 
+            onClick={toggleDarkMode}
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+          >
+            {isDarkMode ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} />}
+          </button>
         </div>
         
         <button 
@@ -269,7 +301,7 @@ export default function App() {
           <button 
             onClick={() => setView('dashboard')}
             className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
-              view === 'dashboard' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
+              view === 'dashboard' ? 'bg-[#eff6ff] dark:bg-blue-900/20 text-[#2563eb] dark:text-blue-400' : 'text-[#64748b] dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'
             }`}
           >
             <LayoutGrid size={18} /> Dashboard
@@ -279,7 +311,7 @@ export default function App() {
             <button 
               onClick={() => setView('users')}
               className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
-                view === 'users' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
+                view === 'users' ? 'bg-[#eff6ff] dark:bg-blue-900/20 text-[#2563eb] dark:text-blue-400' : 'text-[#64748b] dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'
               }`}
             >
               <Users size={18} /> User Management
@@ -289,7 +321,7 @@ export default function App() {
            <button 
             onClick={() => setView('settings')}
             className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
-              view === 'settings' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
+              view === 'settings' ? 'bg-[#eff6ff] dark:bg-blue-900/20 text-[#2563eb] dark:text-blue-400' : 'text-[#64748b] dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'
             }`}
           >
             <SettingsIcon size={18} /> Global Settings
@@ -298,7 +330,7 @@ export default function App() {
           <button 
             onClick={() => setView('trash')}
             className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
-              view === 'trash' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
+              view === 'trash' ? 'bg-[#eff6ff] dark:bg-blue-900/20 text-[#2563eb] dark:text-blue-400' : 'text-[#64748b] dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'
             }`}
           >
             <Trash2 size={18} /> Recycle Bin
@@ -306,7 +338,7 @@ export default function App() {
           
           <button 
             onClick={() => AuthService.logout()}
-            className="flex items-center gap-3 p-3 rounded-lg font-medium text-sm text-[#64748b] hover:bg-red-50 hover:text-red-500 transition-all mt-4"
+            className="flex items-center gap-3 p-3 rounded-lg font-medium text-sm text-[#64748b] dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all mt-4"
           >
             <LogOut size={18} /> Logout
           </button>
@@ -317,11 +349,19 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         {/* Global Header */}
-        <header className="h-16 bg-white border-b border-[#e2e8f0] px-6 lg:px-8 flex items-center justify-between shrink-0 z-40">
-          <div className="lg:hidden text-[20px] font-black tracking-tighter text-[#2563eb]" onClick={() => setView('dashboard')}>
-            RECALL
+        <header className="h-16 bg-white dark:bg-[#1e293b] border-b border-[#e2e8f0] dark:border-[#334155] px-6 lg:px-8 flex items-center justify-between shrink-0 z-40">
+          <div className="flex items-center gap-4 lg:hidden">
+            <div className="text-[20px] font-black tracking-tighter text-[#2563eb]" onClick={() => setView('dashboard')}>
+              RECALL
+            </div>
+            <button 
+              onClick={toggleDarkMode}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+            >
+              {isDarkMode ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} />}
+            </button>
           </div>
-          <div className="hidden lg:block text-xs font-bold text-gray-400 uppercase tracking-widest">
+          <div className="hidden lg:block text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
             {view === 'dashboard' ? 'Digital Archive Base' : 
              view === 'add' ? (editingPackage ? 'Update Archive' : 'New Archive Entry') :
              view === 'settings' ? 'System Configuration' :
@@ -330,7 +370,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             {isOffline && (
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-500 text-[10px] font-bold rounded-full border border-red-100">
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-500 text-[10px] font-bold rounded-full border border-red-100 dark:border-red-900/30">
                 <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> Offline Mode
               </span>
             )}
@@ -338,7 +378,7 @@ export default function App() {
               onClick={() => setView('profile')}
               className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                 view === 'profile' ? 'ring-2 ring-blue-500 ring-offset-2' : 'hover:scale-105'
-              } ${userProfile?.role === 'Admin' ? 'bg-indigo-600 text-white' : 'bg-blue-100 text-blue-600'}`}
+              } ${userProfile?.role === 'Admin' ? 'bg-indigo-600 text-white' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}
               title="My Profile"
             >
               <div className="font-bold text-xs">
@@ -388,31 +428,31 @@ export default function App() {
         </div>
 
         {/* Mobile Bottom Nav */}
-        <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-white/90 backdrop-blur-xl border border-white/20 rounded-3xl p-1.5 flex justify-between items-center z-50 shadow-2xl shadow-blue-900/10">
+        <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-3xl p-1.5 flex justify-between items-center z-50 shadow-2xl shadow-blue-900/10">
           <button 
             onClick={() => setView('dashboard')}
-            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'dashboard' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b]'}`}
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'dashboard' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b] dark:text-slate-400'}`}
           >
             <LayoutGrid size={20} />
             <span className="text-[10px] font-bold">Base</span>
           </button>
           <button 
             onClick={handleAddNew}
-            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'add' && !editingPackage ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b]'}`}
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'add' && !editingPackage ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b] dark:text-slate-400'}`}
           >
             <Plus size={20} />
             <span className="text-[10px] font-bold">New</span>
           </button>
           <button 
             onClick={() => setView('trash')}
-            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'trash' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b]'}`}
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'trash' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b] dark:text-slate-400'}`}
           >
             <Trash2 size={20} />
             <span className="text-[10px] font-bold">Trash</span>
           </button>
           <button 
             onClick={() => setView('settings')}
-            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'settings' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b]'}`}
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'settings' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b] dark:text-slate-400'}`}
           >
             <SettingsIcon size={20} />
             <span className="text-[10px] font-bold">Tools</span>

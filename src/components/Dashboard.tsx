@@ -84,6 +84,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     // Sorting
     result.sort((a, b) => {
+      // Rule 1: Pinned items always on top
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+
       const getTimestamp = (val: any) => {
         if (!val) return Date.now() / 1000; // Assume current time for pending server timestamps
         if (typeof val.toMillis === 'function') return val.toMillis() / 1000;
@@ -165,39 +169,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <header className="flex flex-col gap-6 mb-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-[28px] font-bold text-[#1e293b] leading-tight">Your Archive</h1>
-            <p className="text-[#64748b] text-sm mt-1 font-medium">Displaying {processedItems.length}/{items.length} active packages</p>
+            <h1 className="text-[28px] font-bold text-[#1e293b] dark:text-[#f1f5f9] leading-tight">Your Archive</h1>
+            <p className="text-[#64748b] dark:text-slate-400 text-sm mt-1 font-medium">Displaying {processedItems.length}/{items.length} active packages</p>
           </div>
           
           <div className="flex flex-wrap gap-3 w-full md:w-auto">
             {/* View Mode Switcher */}
-            <div className="flex bg-white border border-[#e2e8f0] p-1 rounded-xl shadow-sm">
+            <div className="flex bg-white dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700 p-1 rounded-xl shadow-sm">
               <button 
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#2563eb] text-white' : 'text-[#64748b] hover:bg-[#f8fafc]'}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#2563eb] text-white' : 'text-[#64748b] dark:text-slate-400 hover:bg-[#f8fafc] dark:hover:bg-slate-700'}`}
               >
                 <LayoutGrid size={18} />
               </button>
               <button 
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-[#2563eb] text-white' : 'text-[#64748b] hover:bg-[#f8fafc]'}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-[#2563eb] text-white' : 'text-[#64748b] dark:text-slate-400 hover:bg-[#f8fafc] dark:hover:bg-slate-700'}`}
               >
                 <List size={18} />
               </button>
               <button 
                 onClick={() => setViewMode('gallery')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'gallery' ? 'bg-[#2563eb] text-white' : 'text-[#64748b] hover:bg-[#f8fafc]'}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'gallery' ? 'bg-[#2563eb] text-white' : 'text-[#64748b] dark:text-slate-400 hover:bg-[#f8fafc] dark:hover:bg-slate-700'}`}
               >
                 <ImageIcon size={18} />
               </button>
             </div>
 
             <div className="relative min-w-[200px] lg:min-w-[300px]">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748b]" size={16} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748b] dark:text-slate-500" size={16} />
               <input 
                 type="text" 
                 placeholder="Search everything..." 
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#cbd5e1] rounded-xl text-sm text-[#1e293b] placeholder-[#64748b] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb] transition-all shadow-sm"
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-[#cbd5e1] dark:border-slate-700 rounded-xl text-sm text-[#1e293b] dark:text-slate-200 placeholder-[#64748b] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb] transition-all shadow-sm"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -208,7 +212,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
                 isAdvancedOpen || includeTags.length > 0 || excludeTags.length > 0
                 ? 'bg-[#2563eb] border-[#2563eb] text-white shadow-lg shadow-blue-600/20' 
-                : 'bg-white border-[#cbd5e1] text-[#475569] hover:bg-[#f8fafc]'
+                : 'bg-white dark:bg-slate-800 border-[#cbd5e1] dark:border-slate-700 text-[#475569] dark:text-slate-300 hover:bg-[#f8fafc] dark:hover:bg-slate-700'
               }`}
             >
               <Filter size={16} />
@@ -219,7 +223,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {/* Sort Dropdown */}
             <div className="relative group">
               <select 
-                className="pl-10 pr-8 py-2.5 bg-white border border-[#cbd5e1] rounded-xl text-sm font-semibold text-[#475569] appearance-none cursor-pointer outline-none focus:border-[#2563eb] shadow-sm w-full md:w-auto"
+                className="pl-10 pr-8 py-2.5 bg-white dark:bg-slate-800 border border-[#cbd5e1] dark:border-slate-700 rounded-xl text-sm font-semibold text-[#475569] dark:text-slate-300 appearance-none cursor-pointer outline-none focus:border-[#2563eb] shadow-sm w-full md:w-auto"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
               >
@@ -242,17 +246,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden bg-white border border-[#e2e8f0] rounded-[24px] p-6 lg:p-8 shadow-sm"
+              className="overflow-hidden bg-white dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700 rounded-[24px] p-6 lg:p-8 shadow-sm"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {/* Category Filter */}
                 <div>
-                  <h4 className="text-sm font-bold text-[#1e293b] mb-3 flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-[#1e293b] dark:text-slate-200 mb-3 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                     Category
                   </h4>
                   <select 
-                    className="w-full px-4 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-lg text-sm font-medium text-[#475569] appearance-none cursor-pointer outline-none focus:border-[#2563eb]"
+                    className="w-full px-4 py-2.5 bg-[#f8fafc] dark:bg-slate-900 border border-[#cbd5e1] dark:border-slate-700 rounded-lg text-sm font-medium text-[#475569] dark:text-slate-300 appearance-none cursor-pointer outline-none focus:border-[#2563eb]"
                     value={filterCat}
                     onChange={(e) => setFilterCat(e.target.value)}
                   >
@@ -263,14 +267,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                 {/* Tag Selection */}
                 <div className="lg:col-span-2">
-                  <h4 className="text-sm font-bold text-[#1e293b] mb-3 flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-[#1e293b] dark:text-slate-200 mb-3 flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                       Tag Explorer (Include/Exclude)
                     </span>
                     <button 
                       onClick={() => { setIncludeTags([]); setExcludeTags([]); }}
-                      className="text-[10px] text-blue-600 hover:underline font-extrabold uppercase tracking-widest"
+                      className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-extrabold uppercase tracking-widest"
                     >
                       Reset Tags
                     </button>
@@ -280,11 +284,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       const isIncluded = includeTags.includes(tag);
                       const isExcluded = excludeTags.includes(tag);
                       return (
-                        <div key={tag} className="flex overflow-hidden rounded-lg border border-[#e2e8f0] bg-white group shadow-sm transition-all hover:shadow-md">
+                        <div key={tag} className="flex overflow-hidden rounded-lg border border-[#e2e8f0] dark:border-slate-700 bg-white dark:bg-slate-900 group shadow-sm transition-all hover:shadow-md">
                           <button 
                             onClick={() => toggleIncludeTag(tag)}
                             className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-all ${
-                              isIncluded ? 'bg-green-500 text-white border-green-500' : 'text-[#475569] hover:bg-green-50'
+                              isIncluded ? 'bg-green-500 text-white border-green-500' : 'text-[#475569] dark:text-slate-300 hover:bg-green-50 dark:hover:bg-green-900/20'
                             }`}
                           >
                             {isIncluded && <Check size={12} strokeWidth={3} />}
@@ -292,8 +296,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           </button>
                           <button 
                             onClick={() => toggleExcludeTag(tag)}
-                            className={`border-l border-[#e2e8f0] px-2 py-1.5 transition-all ${
-                              isExcluded ? 'bg-red-500 text-white border-red-500' : 'text-[#94a3b8] hover:bg-red-50 hover:text-red-500'
+                            className={`border-l border-[#e2e8f0] dark:border-slate-700 px-2 py-1.5 transition-all ${
+                              isExcluded ? 'bg-red-500 text-white border-red-500' : 'text-[#94a3b8] dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500'
                             }`}
                             title="Exclude this tag"
                           >
@@ -303,7 +307,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       );
                     })}
                   </div>
-                  <p className="text-[10px] text-[#94a3b8] mt-3 font-medium">Click tag to <span className="text-green-600 font-bold">INCLUDE</span>, click X to <span className="text-red-600 font-bold">EXCLUDE</span>.</p>
+                  <p className="text-[10px] text-[#94a3b8] dark:text-slate-500 mt-3 font-medium">Click tag to <span className="text-green-600 dark:text-green-400 font-bold">INCLUDE</span>, click X to <span className="text-red-600 dark:text-red-400 font-bold">EXCLUDE</span>.</p>
                 </div>
               </div>
             </motion.div>
@@ -331,12 +335,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </AnimatePresence>
         </div>
       ) : (
-        <div className="text-center py-32 bg-white rounded-[32px] border border-dashed border-[#e2e8f0]">
-          <div className="bg-[#f1f5f9] w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <LayoutGrid className="text-[#94a3b8]" size={40} />
+        <div className="text-center py-32 bg-white dark:bg-slate-800/50 rounded-[32px] border border-dashed border-[#e2e8f0] dark:border-slate-700">
+          <div className="bg-[#f1f5f9] dark:bg-slate-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <LayoutGrid className="text-[#94a3b8] dark:text-slate-500" size={40} />
           </div>
-          <h3 className="text-[#1e293b] font-bold text-xl">No active packages</h3>
-          <p className="text-[#64748b] text-sm mt-2 max-w-xs mx-auto">Start building your knowledge base by adding your first important record.</p>
+          <h3 className="text-[#1e293b] dark:text-[#f1f5f9] font-bold text-xl">No active packages</h3>
+          <p className="text-[#64748b] dark:text-slate-400 text-sm mt-2 max-w-xs mx-auto">Start building your knowledge base by adding your first important record.</p>
         </div>
       )}
     </div>

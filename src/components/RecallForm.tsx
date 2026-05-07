@@ -117,7 +117,7 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
       case 1:
         return (
           <div className="space-y-6">
-            <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:border-blue-400 transition-colors bg-gray-50 relative group">
+            <div className="border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-2xl p-8 text-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors bg-gray-50 dark:bg-slate-800/50 relative group">
               <input 
                 type="file" 
                 multiple 
@@ -126,11 +126,11 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
               />
               <div className="flex flex-col items-center gap-2">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
                   <Camera size={24} />
                 </div>
-                <p className="text-gray-600 font-medium">Click or Drag photos to upload first</p>
-                <p className="text-xs text-gray-400">Max 1MB total compressed size</p>
+                <p className="text-gray-600 dark:text-slate-300 font-medium">Click or Drag photos to upload first</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">Max 1MB total compressed size</p>
               </div>
             </div>
 
@@ -163,21 +163,21 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
           <div className="space-y-6">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Judul Package *</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Judul Package *</label>
                 <input 
                   required 
                   type="text"
                   placeholder="e.g., Laporan Vibrasi Pompa A" 
-                  className="w-full p-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-slate-200 dark:placeholder-slate-500"
                   value={formData.judul}
                   onChange={e => setFormData({...formData, judul: e.target.value})}
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Deskripsi Detail</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Deskripsi Detail</label>
                 <textarea 
                   placeholder="Ceritakan detail tentang data ini (opsional)..." 
-                  className="w-full p-3 bg-gray-50 border-none rounded-xl h-32 resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl h-32 resize-none focus:ring-2 focus:ring-blue-500 outline-none dark:text-slate-200 dark:placeholder-slate-500"
                   value={formData.deskripsi}
                   onChange={e => setFormData({...formData, deskripsi: e.target.value})}
                 />
@@ -190,9 +190,9 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Kategori</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Kategori</label>
                 <select 
-                  className="w-full p-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                  className="w-full p-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none dark:text-slate-200"
                   value={formData.kategori}
                   onChange={e => setFormData({...formData, kategori: e.target.value})}
                 >
@@ -201,13 +201,13 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Klien / Pihak Terkait</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Klien / Pihak Terkait</label>
                 <div className="relative">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
                   <input 
                     placeholder="Nama Klien (Opsional)" 
                     list="client-list"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-slate-200 dark:placeholder-slate-500"
                     value={formData.klien}
                     onChange={e => setFormData({...formData, klien: e.target.value})}
                   />
@@ -314,7 +314,7 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-10 pb-40">
-      <div className="bg-white rounded-[32px] shadow-2xl shadow-blue-900/10 overflow-hidden">
+      <div className="bg-white dark:bg-[#1e293b] rounded-[32px] shadow-2xl shadow-blue-900/10 overflow-hidden">
         {/* Header */}
         <div className="bg-blue-600 p-8 text-white">
           <h2 className="text-3xl font-black tracking-tight mb-2">
@@ -354,7 +354,7 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
             <motion.div 
               initial={{ opacity: 0, y: -10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 flex items-center gap-3 text-sm font-medium"
+              className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl mb-6 flex items-center gap-3 text-sm font-medium"
             >
               <AlertTriangle size={20} />
               {error}
@@ -370,7 +370,7 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
               <button 
                 type="button"
                 onClick={() => setCurrentStep(prev => prev - 1)}
-                className="text-gray-400 hover:text-gray-600 font-bold px-4 transition-colors"
+                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 font-bold px-4 transition-colors"
               >
                 Back
               </button>
@@ -394,7 +394,7 @@ export const RecallForm: React.FC<RecallFormProps> = ({ categories, availableTag
                   type="submit"
                   key="btn-submit"
                   disabled={loading}
-                  className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95 transition-all disabled:bg-gray-300 disabled:shadow-none"
+                  className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95 transition-all disabled:bg-gray-300 dark:disabled:bg-slate-800 disabled:shadow-none"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">Memproses Archive...</span>

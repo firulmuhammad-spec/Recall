@@ -186,8 +186,10 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
         layout
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
-        className={`bg-white border p-3 rounded-xl flex items-center gap-4 group hover:shadow-md transition-all relative ${
-          isUrgent ? 'border-l-4 border-l-red-500' : 'border-[#e2e8f0]'
+        className={`bg-white dark:bg-slate-800/80 border p-3 rounded-xl flex items-center gap-4 group hover:shadow-md transition-all relative ${
+          showExportMenu ? 'z-[50]' : 'z-[1]'
+        } ${
+          isUrgent ? 'border-l-4 border-l-red-500' : 'border-[#e2e8f0] dark:border-slate-700'
         }`}
       >
         <AnimatePresence>
@@ -210,9 +212,9 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
            )}
         </div>
         <div className="flex-grow min-w-0">
-           <h3 className="font-bold text-[#1e293b] truncate text-sm">{item.judul}</h3>
-           <div className="flex items-center gap-3 mt-0.5 text-[10px] text-[#64748b]">
-              <span className="font-bold text-blue-600 uppercase">{item.kategori}</span>
+           <h3 className="font-bold text-[#1e293b] dark:text-slate-200 truncate text-sm">{item.judul}</h3>
+           <div className="flex items-center gap-3 mt-0.5 text-[10px] text-[#64748b] dark:text-slate-400">
+              <span className="font-bold text-blue-600 dark:text-blue-400 uppercase">{item.kategori}</span>
               {item.klien && (
                 <span className="flex items-center gap-1">
                   <User size={10} /> {item.klien}
@@ -220,20 +222,23 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
               )}
            </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[100]">
+        <div className={`flex items-center gap-1 transition-opacity z-[100] ${showExportMenu ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
            <button 
              onClick={handleTogglePin}
              disabled={isPinning}
-             className={`p-2 rounded-lg transition-colors ${item.isPinned ? 'text-blue-500 bg-blue-50' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50'}`}
+             className={`p-2 rounded-lg transition-colors ${item.isPinned ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
              title={item.isPinned ? "Unpin item" : "Pin item"}
            >
               {isPinning ? <Loader2 size={14} className="animate-spin" /> : <Pin size={14} className={item.isPinned ? 'fill-blue-500' : ''} />}
            </button>
            <div className="relative z-[110]">
              <button 
-               onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
+               onClick={(e) => { 
+                e.stopPropagation(); 
+                setShowExportMenu(!showExportMenu); 
+               }}
                disabled={isExporting}
-               className={`p-2 rounded-lg transition-colors ${showExportMenu ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50'}`}
+               className={`p-2 rounded-lg transition-colors ${showExportMenu ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
                title="Export Options"
              >
                 {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
@@ -242,24 +247,26 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
              <AnimatePresence>
                {showExportMenu && (
                  <motion.div 
-                   initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                   className="absolute bottom-full right-0 mb-3 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[200]"
+                   initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+                   animate={{ opacity: 1, y: 0, scale: 1 }} 
+                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                   className="absolute top-full right-0 mt-3 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 p-2 z-[200]"
                    onClick={(e) => e.stopPropagation()}
                  >
-                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2">Download</div>
-                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('download', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
-                     <Download size={14} className="group-hover:text-blue-500" /> Full Record
+                   <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3 py-2">Download</div>
+                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('download', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl flex items-center gap-2 group">
+                     <Download size={14} className="group-hover:text-blue-500 dark:text-slate-500" /> Full Record
                    </button>
-                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('download', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
-                     <Download size={14} className="group-hover:text-blue-500" /> Photos Only
+                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('download', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl flex items-center gap-2 group">
+                     <Download size={14} className="group-hover:text-blue-500 dark:text-slate-500" /> Photos Only
                    </button>
-                   <div className="h-px bg-slate-100 my-2" />
-                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2">Share</div>
-                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('share', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
-                     <Share2 size={14} className="group-hover:text-blue-500" /> Details Share
+                   <div className="h-px bg-slate-100 dark:bg-slate-700 my-2" />
+                   <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3 py-2">Share</div>
+                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('share', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl flex items-center gap-2 group">
+                     <Share2 size={14} className="group-hover:text-blue-500 dark:text-slate-500" /> Details Share
                    </button>
-                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('share', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
-                     <Share2 size={14} className="group-hover:text-blue-500" /> Photos Layout
+                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('share', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl flex items-center gap-2 group">
+                     <Share2 size={14} className="group-hover:text-blue-500 dark:text-slate-500" /> Photos Layout
                    </button>
                  </motion.div>
                )}
@@ -284,7 +291,7 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
-        className={`bg-white rounded-[16px] border border-[#e2e8f0] flex flex-col overflow-hidden transition-all duration-300 relative group hover:shadow-xl hover:shadow-blue-900/5 ${
+        className={`bg-white dark:bg-slate-900 rounded-[16px] border border-[#e2e8f0] dark:border-slate-800 flex flex-col overflow-hidden transition-all duration-300 relative group hover:shadow-xl hover:shadow-blue-900/5 ${
           isUrgent ? 'border-2 border-[#ef4444] shadow-[0_4px_20px_rgba(239,68,68,0.1)]' : ''
         } ${isDeleting ? 'opacity-50 grayscale pointer-events-none' : ''}`}
       >
@@ -360,11 +367,11 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
             )}
           </div>
 
-          <h3 className="text-base font-bold text-[#1e293b] leading-snug group-hover:text-blue-600 transition-colors">
+          <h3 className="text-base font-bold text-[#1e293b] dark:text-slate-200 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {item.judul}
           </h3>
           
-          <p className="text-[13px] text-[#64748b] leading-relaxed mt-2 line-clamp-2">
+          <p className="text-[13px] text-[#64748b] dark:text-slate-400 leading-relaxed mt-2 line-clamp-2">
             {item.deskripsi}
           </p>
 
@@ -409,28 +416,28 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
                   {showExportMenu && (
                     <motion.div 
                       initial={{ opacity: 0, y: 5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 5, scale: 0.95 }}
-                      className="absolute bottom-full right-0 mb-3 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2.5 z-40"
+                      className="absolute bottom-full right-0 mb-3 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 p-2.5 z-40"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-2">Select Export Mode</div>
                       
                       <div className="space-y-1">
-                        <button onClick={() => { handleExportAction('download', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center justify-between group">
+                        <button onClick={() => { handleExportAction('download', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl flex items-center justify-between group">
                           <span className="flex items-center gap-2"><Download size={14} className="text-slate-400 group-hover:text-blue-500" /> Full Info PNG</span>
-                          <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">HQ</span>
+                          <span className="text-[8px] bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">HQ</span>
                         </button>
-                        <button onClick={() => { handleExportAction('download', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                        <button onClick={() => { handleExportAction('download', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl flex items-center gap-2 group">
                           <Download size={14} className="text-slate-400 group-hover:text-blue-500" /> Photos Grid
                         </button>
                       </div>
 
-                      <div className="h-px bg-slate-100 my-2" />
+                      <div className="h-px bg-slate-100 dark:bg-slate-700 my-2" />
                       
                       <div className="space-y-1">
-                        <button onClick={() => { handleExportAction('share', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                        <button onClick={() => { handleExportAction('share', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl flex items-center gap-2 group">
                           <Share2 size={14} className="text-slate-400 group-hover:text-blue-500" /> Share Data
                         </button>
-                        <button onClick={() => { handleExportAction('share', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                        <button onClick={() => { handleExportAction('share', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl flex items-center gap-2 group">
                           <Share2 size={14} className="text-slate-400 group-hover:text-blue-500" /> Share Images
                         </button>
                       </div>

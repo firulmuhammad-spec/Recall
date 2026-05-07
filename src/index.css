@@ -7,8 +7,12 @@
 
 @layer base {
   body {
-    @apply bg-[#f1f5f9] text-[#1e293b];
+    @apply bg-[#f1f5f9] text-[#1e293b] dark:bg-[#0f172a] dark:text-[#f1f5f9] transition-colors duration-200;
   }
+}
+
+.dark {
+  color-scheme: dark;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
