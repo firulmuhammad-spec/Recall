@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { LogIn, Plus, LayoutGrid, Settings as SettingsIcon, LogOut, Package, Users, User as UserIcon } from 'lucide-react';
+import { Settings as SettingsIcon, LogOut, Package, Users, User as UserIcon, Trash2, Bell, LayoutGrid, Plus } from 'lucide-react';
 import { auth, db } from './lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { FirestoreService } from './lib/firestoreService';
@@ -13,6 +13,7 @@ import { LoginView } from './components/LoginView';
 import { SplashScreen } from './components/SplashScreen';
 import { UserManager } from './components/UserManager';
 import { ProfileView } from './components/ProfileView';
+import { TrashView } from './components/TrashView';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -26,12 +27,41 @@ export default function App() {
     categories: ["Pekerjaan", "Rumah", "Finance", "Kesehatan", "Lainnya"],
     availableTags: ["#vibrasi", "#pengujian", "#riwayatkesehatan", "#dokumen", "#penting"]
   });
-  const [view, setView] = useState<'dashboard' | 'add' | 'settings' | 'users' | 'profile'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'add' | 'settings' | 'users' | 'profile' | 'trash'>('dashboard');
   const [editingPackage, setEditingPackage] = useState<RecallPackage | null>(null);
 
   const clientSuggestions = useMemo(() => {
     const clients = packages.map(p => p.klien).filter((k): k is string => !!k);
     return Array.from(new Set(clients)).sort();
+  }, [packages]);
+
+  useEffect(() => {
+    if (packages.length > 0 && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+      
+      if (Notification.permission === "granted") {
+        const now = new Date();
+        const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const urgentItems = packages.filter(p => 
+          p.status === "Menunggu" && p.bulanTahunTarget && currentYearMonth >= p.bulanTahunTarget
+        );
+
+        if (urgentItems.length > 0) {
+          const lastNotif = localStorage.getItem('last_urgent_notif');
+          const today = now.toDateString();
+          
+          if (lastNotif !== today) {
+            new Notification("Recall Archive Urgent!", {
+              body: `Ada ${urgentItems.length} item yang butuh perhatian hari ini. Silakan cek dashboard.`,
+              icon: "https://cdn-icons-png.flaticon.com/512/9167/9167014.png"
+            });
+            localStorage.setItem('last_urgent_notif', today);
+          }
+        }
+      }
+    }
   }, [packages]);
 
   // Sync preferences to Firestore (debounced)
@@ -256,13 +286,22 @@ export default function App() {
             </button>
           )}
 
-          <button 
+           <button 
             onClick={() => setView('settings')}
             className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
               view === 'settings' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
             }`}
           >
             <SettingsIcon size={18} /> Global Settings
+          </button>
+
+          <button 
+            onClick={() => setView('trash')}
+            className={`flex items-center gap-3 p-3 rounded-lg font-medium text-sm transition-all ${
+              view === 'trash' ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#64748b] hover:bg-gray-50'
+            }`}
+          >
+            <Trash2 size={18} /> Recycle Bin
           </button>
           
           <button 
@@ -286,7 +325,8 @@ export default function App() {
             {view === 'dashboard' ? 'Digital Archive Base' : 
              view === 'add' ? (editingPackage ? 'Update Archive' : 'New Archive Entry') :
              view === 'settings' ? 'System Configuration' :
-             view === 'users' ? 'User Administration' : 'Account Intelligence'}
+             view === 'users' ? 'User Administration' : 
+             view === 'trash' ? 'Recycle Bin System' : 'Account Intelligence'}
           </div>
           <div className="flex items-center gap-4">
             {isOffline && (
@@ -343,6 +383,7 @@ export default function App() {
             />
           )}
           {view === 'users' && <UserManager />}
+          {view === 'trash' && <TrashView />}
           {view === 'profile' && userProfile && <ProfileView userProfile={userProfile} />}
         </div>
 
@@ -361,6 +402,13 @@ export default function App() {
           >
             <Plus size={20} />
             <span className="text-[10px] font-bold">New</span>
+          </button>
+          <button 
+            onClick={() => setView('trash')}
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 rounded-2xl transition-all ${view === 'trash' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30' : 'text-[#64748b]'}`}
+          >
+            <Trash2 size={20} />
+            <span className="text-[10px] font-bold">Trash</span>
           </button>
           <button 
             onClick={() => setView('settings')}

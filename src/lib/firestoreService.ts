@@ -73,20 +73,25 @@ export const FirestoreService = {
   getPackages: (callback: (packages: RecallPackage[]) => void) => {
     if (!auth.currentUser) return;
     const path = 'packages';
-    // Simplified query to avoid immediate need for composite index
+    // Use a simple query to fetch everything and filter on client side
+    // This avoids "field doesn't exist" issues with Firestore queries
     const q = query(
-      collection(db, path),
-      where('ownerId', '==', auth.currentUser.uid)
+      collection(db, path)
     );
 
     return onSnapshot(q, (snapshot) => {
-      const packages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as RecallPackage[];
+      const packages = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .filter(p => (p as any).isDeleted !== true) as RecallPackage[];
       
-      // Sort on client side to ensure data shows up even without index
+      // Sort: Pinned first, then date
       const sortedPackages = packages.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+
         const getTime = (val: any) => {
           if (!val) return 0;
           if (val instanceof Date) return val.getTime();
@@ -103,6 +108,67 @@ export const FirestoreService = {
     });
   },
 
+  getTrash: (callback: (packages: RecallPackage[]) => void) => {
+    if (!auth.currentUser) return;
+    const path = 'packages';
+    const q = query(
+      collection(db, path),
+      where('isDeleted', '==', true)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+      const packages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as RecallPackage[];
+      callback(packages);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+  },
+
+  restoreFromTrash: async (id: string) => {
+    const path = `packages/${id}`;
+    try {
+      await updateDoc(doc(db, 'packages', id), { 
+        isDeleted: false, 
+        deletedAt: null 
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  },
+
+  deletePermanently: async (id: string) => {
+    const path = `packages/${id}`;
+    try {
+      await deleteDoc(doc(db, 'packages', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  togglePin: async (id: string, isPinned: boolean) => {
+    const path = `packages/${id}`;
+    try {
+      await updateDoc(doc(db, 'packages', id), { isPinned });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  },
+
+  moveToTrash: async (id: string) => {
+    const path = `packages/${id}`;
+    try {
+      await updateDoc(doc(db, 'packages', id), { 
+        isDeleted: true, 
+        deletedAt: serverTimestamp() 
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  },
+
   addPackage: async (data: Omit<RecallPackage, 'id' | 'tanggalInput' | 'ownerId'>) => {
     const path = 'packages';
     try {
@@ -110,6 +176,8 @@ export const FirestoreService = {
       const docRef = await addDoc(collection(db, path), {
         ...data,
         ownerId: auth.currentUser.uid,
+        isDeleted: false,
+        isPinned: false,
         tanggalInput: serverTimestamp(),
       });
       return docRef.id;

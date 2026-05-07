@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Filter, LayoutGrid, List, Image as ImageIcon, ChevronDown, ChevronUp, X, Check, ArrowUpDown } from 'lucide-react';
+import { Search, Filter, LayoutGrid, List, Image as ImageIcon, ChevronDown, ChevronUp, X, Check, ArrowUpDown, AlertCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Card } from './Card';
 import { RecallPackage } from '../types';
@@ -129,11 +129,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const handleDelete = async (id: string) => {
-    await FirestoreService.deletePackage(id);
+    await FirestoreService.moveToTrash(id);
   };
+
+  const urgentCount = useMemo(() => 
+    processedItems.filter(p => p.effectiveStatus === 'Urgent').length
+  , [processedItems]);
 
   return (
     <div className="p-8 lg:p-12 max-w-[1400px] mx-auto pb-32 lg:pb-12">
+      {urgentCount > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-4 bg-red-50 border border-red-100 rounded-[20px] flex items-center justify-between shadow-sm"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-red-600">
+              <AlertCircle size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-black text-red-900 uppercase tracking-tight">Urgent Action Required</p>
+              <p className="text-xs text-red-600 font-medium">You have {urgentCount} items that need attention today.</p>
+            </div>
+          </div>
+          <button 
+             onClick={() => setSortBy('urgent')}
+             className="px-4 py-2 bg-red-600 text-white text-[10px] font-black rounded-lg uppercase transition-all active:scale-95 shadow-lg shadow-red-200"
+          >
+            Review Now
+          </button>
+        </motion.div>
+      )}
+
       <header className="flex flex-col gap-6 mb-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>

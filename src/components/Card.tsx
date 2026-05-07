@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, User, Trash2, AlertCircle, Pencil, X, Maximize2, ChevronLeft, ChevronRight, Share2, Download, Loader2 } from 'lucide-react';
+import { Calendar, User, Trash2, AlertCircle, Pencil, X, Maximize2, ChevronLeft, ChevronRight, Share2, Download, Loader2, Pin, PinOff } from 'lucide-react';
 import { RecallPackage } from '../types';
 import { ExportCard } from './ExportCard';
 import { toPng } from 'html-to-image';
+import { FirestoreService } from '../lib/firestoreService';
 
 interface CardProps {
   item: RecallPackage & { effectiveStatus?: string };
@@ -18,8 +19,19 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
   const [isExporting, setIsExporting] = useState(false);
   const [exportMode, setExportMode] = useState<'full' | 'photo_only'>('full');
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
   const exportRef = React.useRef<HTMLDivElement>(null);
   const isUrgent = item.effectiveStatus === 'Urgent';
+
+  const handleTogglePin = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsPinning(true);
+    try {
+      await FirestoreService.togglePin(item.id, !item.isPinned);
+    } finally {
+      setIsPinning(false);
+    }
+  };
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -208,12 +220,20 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
               )}
            </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-           <div className="relative">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[100]">
+           <button 
+             onClick={handleTogglePin}
+             disabled={isPinning}
+             className={`p-2 rounded-lg transition-colors ${item.isPinned ? 'text-blue-500 bg-blue-50' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50'}`}
+             title={item.isPinned ? "Unpin item" : "Pin item"}
+           >
+              {isPinning ? <Loader2 size={14} className="animate-spin" /> : <Pin size={14} className={item.isPinned ? 'fill-blue-500' : ''} />}
+           </button>
+           <div className="relative z-[110]">
              <button 
                onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
                disabled={isExporting}
-               className={`p-2 rounded-lg transition-colors ${showExportMenu ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50'}`}
+               className={`p-2 rounded-lg transition-colors ${showExportMenu ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50'}`}
                title="Export Options"
              >
                 {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
@@ -222,24 +242,24 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
              <AnimatePresence>
                {showExportMenu && (
                  <motion.div 
-                   initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
-                   className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-30"
+                   initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                   className="absolute bottom-full right-0 mb-3 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[200]"
                    onClick={(e) => e.stopPropagation()}
                  >
                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2">Download</div>
-                   <button onClick={() => { handleExportAction('download', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-lg flex items-center gap-2">
-                     <Download size={14} /> Full Record
+                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('download', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                     <Download size={14} className="group-hover:text-blue-500" /> Full Record
                    </button>
-                   <button onClick={() => { handleExportAction('download', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-lg flex items-center gap-2">
-                     <Download size={14} /> Photos Only
+                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('download', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                     <Download size={14} className="group-hover:text-blue-500" /> Photos Only
                    </button>
-                   <div className="h-px bg-slate-100 my-1" />
+                   <div className="h-px bg-slate-100 my-2" />
                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2">Share</div>
-                   <button onClick={() => { handleExportAction('share', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-lg flex items-center gap-2">
-                     <Share2 size={14} /> Details Share
+                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('share', 'full'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                     <Share2 size={14} className="group-hover:text-blue-500" /> Details Share
                    </button>
-                   <button onClick={() => { handleExportAction('share', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-lg flex items-center gap-2">
-                     <Share2 size={14} /> Photos Layout
+                   <button onClick={(e) => { e.stopPropagation(); handleExportAction('share', 'photo_only'); setShowExportMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 rounded-xl flex items-center gap-2 group">
+                     <Share2 size={14} className="group-hover:text-blue-500" /> Photos Layout
                    </button>
                  </motion.div>
                )}
@@ -367,6 +387,14 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
               <span className="max-w-[100px] truncate">{item.klien || 'General'}</span>
             </div>
             <div className="flex items-center gap-2">
+              <button 
+                onClick={handleTogglePin}
+                disabled={isPinning}
+                className={`transition-colors disabled:opacity-50 ${item.isPinned ? 'text-blue-500' : 'text-gray-300 hover:text-blue-500'}`}
+                title={item.isPinned ? "Unpin" : "Pin"}
+              >
+                {isPinning ? <Loader2 size={14} className="animate-spin" /> : <Pin size={14} className={item.isPinned ? 'fill-blue-500' : ''} />}
+              </button>
               <div className="relative">
                 <button 
                   onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
@@ -442,27 +470,55 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 lg:p-12"
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 lg:p-12 overflow-y-auto"
             onClick={() => setIsPreviewOpen(false)}
           >
-            <button 
-              className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors z-20"
-              onClick={() => setIsPreviewOpen(false)}
+            {/* Fullscreen Header Info */}
+            <motion.div 
+               initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+               className="absolute top-0 left-0 right-0 p-6 lg:p-10 bg-gradient-to-b from-black/90 via-black/40 to-transparent z-[110] flex justify-between items-start"
+               onClick={(e) => e.stopPropagation()}
             >
-              <X size={32} />
-            </button>
+              <div className="max-w-3xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black rounded-lg uppercase tracking-wider">
+                    {item.kategori}
+                  </span>
+                  {isUrgent && (
+                    <span className="px-3 py-1 bg-red-600 text-white text-[10px] font-black rounded-lg uppercase tracking-wider animate-pulse">
+                      URGENT
+                    </span>
+                  )}
+                  {item.isPinned && (
+                    <span className="flex items-center gap-1 px-3 py-1 bg-amber-500 text-white text-[10px] font-black rounded-lg uppercase tracking-wider">
+                      <Pin size={10} fill="white" /> PINNED
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl lg:text-4xl font-black text-white leading-tight tracking-tighter mb-4">{item.judul}</h2>
+                <div className="p-5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 max-w-2xl">
+                   <p className="text-gray-200 text-sm lg:text-base leading-relaxed italic">"{item.deskripsi}"</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsPreviewOpen(false)}
+                className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-3xl text-white transition-all shadow-2xl border border-white/10 hover:rotate-90"
+              >
+                <X size={28} />
+              </button>
+            </motion.div>
 
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-5xl w-full h-full flex items-center justify-center p-4"
+              className="relative max-w-5xl w-full h-[60vh] lg:h-[70vh] flex items-center justify-center p-4 mt-20"
               onClick={(e) => e.stopPropagation()}
             >
               <img 
                 src={item.foto[currentImgIndex]} 
                 alt={item.judul} 
-                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
+                className="max-w-full max-h-full object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5" 
               />
 
               {item.foto.length > 1 && (

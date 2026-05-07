@@ -14,6 +14,10 @@ export interface RecallPackage {
   tanggalPengambilan?: string;
   lokasi?: string;
   status: Status;
+  isUrgent?: boolean;
+  isPinned?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: any;
   bulanTahunTarget?: string; // Format YYYY-MM
 }
 
