@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, X, Save, Tag, FolderPlus, Settings as SettingsIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, X, Tag, FolderPlus, Settings as SettingsIcon, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FirestoreService } from '../lib/firestoreService';
 
@@ -14,53 +14,78 @@ export const Settings: React.FC<SettingsProps> = ({ categories, tags, onUpdate }
   const [newTag, setNewTag] = useState("");
   const [localCats, setLocalCats] = useState(categories);
   const [localTags, setLocalTags] = useState(tags);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const addCategory = () => {
-    if (newCat && !localCats.includes(newCat)) {
-      setLocalCats([...localCats, newCat]);
-      setNewCat("");
-    }
-  };
+  // Sync local state with props when database changes
+  useEffect(() => {
+    setLocalCats(categories);
+  }, [categories]);
 
-  const removeCategory = (cat: string) => {
-    setLocalCats(localCats.filter(c => c !== cat));
-  };
+  useEffect(() => {
+    setLocalTags(tags);
+  }, [tags]);
 
-  const addTag = () => {
-    if (newTag && !localTags.includes(newTag)) {
-      const formatted = newTag.startsWith('#') ? newTag : `#${newTag}`;
-      setLocalTags([...localTags, formatted]);
-      setNewTag("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setLocalTags(localTags.filter(t => t !== tag));
-  };
-
-  const handleSave = async () => {
-    setLoading(true);
+  const updateDB = async (updatedCats: string[], updatedTags: string[]) => {
+    setSaving(true);
     try {
       await FirestoreService.saveSettings({
-        categories: localCats,
-        availableTags: localTags
+        categories: updatedCats,
+        availableTags: updatedTags
       });
       onUpdate();
-      alert("Settings saved!");
     } catch (err) {
-      alert("Failed to save settings.");
+      console.error("Failed to auto-save settings:", err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
+  };
+
+  const addCategory = async () => {
+    if (newCat && !localCats.includes(newCat)) {
+      const updated = [...localCats, newCat];
+      setLocalCats(updated);
+      setNewCat("");
+      await updateDB(updated, localTags);
+    }
+  };
+
+  const removeCategory = async (cat: string) => {
+    const updated = localCats.filter(c => c !== cat);
+    setLocalCats(updated);
+    await updateDB(updated, localTags);
+  };
+
+  const addTag = async () => {
+    if (newTag && !localTags.includes(newTag)) {
+      const formatted = newTag.startsWith('#') ? newTag : `#${newTag}`;
+      if (localTags.includes(formatted)) return;
+      
+      const updated = [...localTags, formatted];
+      setLocalTags(updated);
+      setNewTag("");
+      await updateDB(localCats, updated);
+    }
+  };
+
+  const removeTag = async (tag: string) => {
+    const updated = localTags.filter(t => t !== tag);
+    setLocalTags(updated);
+    await updateDB(localCats, updated);
   };
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-10 pb-40">
       <div className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-transparent dark:border-slate-800 p-8">
-        <h2 className="text-2xl font-black mb-8 dark:text-white flex items-center gap-3">
-          <SettingsIcon className="text-blue-600" /> SYSTEM ARCHIVE CONFIG
-        </h2>
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-black dark:text-white flex items-center gap-3">
+            <SettingsIcon className="text-blue-600" /> SYSTEM ARCHIVE CONFIG
+          </h2>
+          {saving && (
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full animate-pulse">
+              <Loader2 size={12} className="animate-spin" /> Saving...
+            </div>
+          )}
+        </div>
         
         <div className="space-y-12">
           {/* Categories */}
@@ -72,14 +97,15 @@ export const Settings: React.FC<SettingsProps> = ({ categories, tags, onUpdate }
               <input 
                 type="text" 
                 placeholder="New Category Name"
-                className="flex-grow p-3 bg-white dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="flex-grow p-3 bg-white dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium"
                 value={newCat}
                 onChange={e => setNewCat(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addCategory()}
               />
               <button 
                 onClick={addCategory}
-                className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-all active:scale-95"
+                disabled={saving}
+                className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50"
               >
                 <Plus size={20} strokeWidth={3} />
               </button>
@@ -112,14 +138,15 @@ export const Settings: React.FC<SettingsProps> = ({ categories, tags, onUpdate }
               <input 
                 type="text" 
                 placeholder="New Tag Name"
-                className="flex-grow p-3 bg-white dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="flex-grow p-3 bg-white dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium"
                 value={newTag}
                 onChange={e => setNewTag(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addTag()}
               />
               <button 
                 onClick={addTag}
-                className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-all active:scale-95"
+                disabled={saving}
+                className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50"
               >
                 <Plus size={20} strokeWidth={3} />
               </button>
@@ -143,14 +170,6 @@ export const Settings: React.FC<SettingsProps> = ({ categories, tags, onUpdate }
             </div>
           </section>
         </div>
-        
-        <button 
-          onClick={handleSave}
-          disabled={loading}
-          className="w-full mt-12 bg-blue-600 text-white p-5 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-blue-700 active:scale-[0.98] transition-all disabled:bg-slate-300 dark:disabled:bg-slate-800 shadow-xl shadow-blue-600/20"
-        >
-          <Save size={20} /> {loading ? "UPDATING SYSTEM..." : "SAVE GLOBAL CONFIG"}
-        </button>
       </div>
     </div>
   );

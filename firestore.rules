@@ -50,16 +50,16 @@ service cloud.firestore {
                       isValidPackage(incoming()) &&
                       incoming().tanggalInput == request.time;
       
-      allow update: if isOwner(existing().ownerId) &&
+      allow update: if (isOwner(existing().ownerId) || isAdmin()) &&
                       isValidPackage(incoming()) &&
                       incoming().ownerId == existing().ownerId &&
                       incoming().tanggalInput == existing().tanggalInput;
       
-      allow delete: if isOwner(existing().ownerId);
+      allow delete: if isOwner(existing().ownerId) || isAdmin();
       
-      allow get: if isOwner(existing().ownerId);
+      allow get: if isOwner(existing().ownerId) || isAdmin();
       
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     match /users/{userId} {

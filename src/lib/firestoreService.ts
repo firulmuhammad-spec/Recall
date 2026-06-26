@@ -1,288 +1,256 @@
 import { 
   collection, 
   doc, 
+  getDoc, 
+  setDoc, 
   addDoc, 
   updateDoc, 
   deleteDoc, 
+  onSnapshot, 
   query, 
   where, 
-  orderBy, 
-  onSnapshot,
   serverTimestamp,
-  getDoc,
-  setDoc
+  Timestamp
 } from 'firebase/firestore';
-import { db, auth, enableNetwork, getDocFromServer } from './firebase';
+import { db, auth } from './firebase';
 import { RecallPackage, AppSettings, UserProfile } from '../types';
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const message = error instanceof Error ? error.message : String(error);
-  
-  // Special handling for missing indexes
-  if (message.includes('index') || message.includes('FAILED_PRECONDITION')) {
-    console.warn('--- FIRESTORE INDEX REQUIRED ---');
-    console.warn('The current query requires a composite index.');
-    console.warn('Please follow this link to create it:');
-    const indexUrl = message.match(/https:\/\/console\.firebase\.google\.com[^\s"]+/);
-    if (indexUrl) {
-      console.warn(indexUrl[0]);
-    } else {
-      console.warn('Check the full error object for the index creation URL.');
-    }
-    console.warn('---------------------------------');
-    return; // Don't throw for index errors, just warn
-  }
-
-  const errInfo: FirestoreErrorInfo = {
-    error: message,
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
 export const FirestoreService = {
-  getPackages: (callback: (packages: RecallPackage[]) => void) => {
-    if (!auth.currentUser) return;
-    const path = 'packages';
-    // Use a simple query to fetch everything and filter on client side
-    // This avoids "field doesn't exist" issues with Firestore queries
-    const q = query(
-      collection(db, path)
-    );
+  getPackages: (isAdmin: boolean, callback: (packages: RecallPackage[]) => void) => {
+    if (!auth.currentUser) return () => {};
+    const uid = auth.currentUser.uid;
+
+    const q = isAdmin
+      ? query(collection(db, 'packages'))
+      : query(collection(db, 'packages'), where('ownerId', '==', uid));
+
+    console.log(`Subscribing to packages. Admin: ${isAdmin}, UID: ${uid}`);
 
     return onSnapshot(q, (snapshot) => {
-      const packages = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-        .filter(p => (p as any).isDeleted !== true) as RecallPackage[];
-      
-      // Sort: Pinned first, then date
-      const sortedPackages = packages.sort((a, b) => {
+      const packages = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data
+        };
+      }) as RecallPackage[];
+
+      // Filter out deleted ones
+      const nonDeleted = packages.filter(p => p.isDeleted !== true);
+
+      // Sort: Pinned first, then date descending
+      const sortedPackages = nonDeleted.sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
 
         const getTime = (val: any) => {
-          if (!val) return 0;
-          if (val instanceof Date) return val.getTime();
+          if (!val) return Date.now();
           if (typeof val.toMillis === 'function') return val.toMillis();
           if (val.seconds) return val.seconds * 1000;
-          return 0;
+          return new Date(val).getTime() || 0;
         };
         return getTime(b.tanggalInput) - getTime(a.tanggalInput);
       });
-      
+
       callback(sortedPackages);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error("Error subscribing to packages:", error);
     });
   },
 
   getTrash: (callback: (packages: RecallPackage[]) => void) => {
-    if (!auth.currentUser) return;
-    const path = 'packages';
-    const q = query(
-      collection(db, path),
-      where('isDeleted', '==', true)
-    );
+    if (!auth.currentUser) return () => {};
+    const uid = auth.currentUser.uid;
 
-    return onSnapshot(q, (snapshot) => {
-      const packages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as RecallPackage[];
-      callback(packages);
+    let unsubPackages: (() => void) | null = null;
+
+    // First fetch the user's profile to check if they are an Admin
+    const unsubUser = onSnapshot(doc(db, 'users', uid), (docSnap) => {
+      const data = docSnap.data();
+      const isAdmin = data?.role === 'Admin';
+
+      if (unsubPackages) unsubPackages();
+
+      const q = isAdmin
+        ? query(collection(db, 'packages'), where('isDeleted', '==', true))
+        : query(collection(db, 'packages'), where('ownerId', '==', uid), where('isDeleted', '==', true));
+
+      unsubPackages = onSnapshot(q, (snapshot) => {
+        const packages = snapshot.docs.map(docSnap => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            ...data
+          };
+        }) as RecallPackage[];
+        callback(packages);
+      }, (error) => {
+        console.error("Error subscribing to trash packages:", error);
+      });
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error("Error subscribing to user profile for trash:", error);
     });
+
+    return () => {
+      unsubUser();
+      if (unsubPackages) unsubPackages();
+    };
   },
 
   restoreFromTrash: async (id: string) => {
-    const path = `packages/${id}`;
     try {
-      await updateDoc(doc(db, 'packages', id), { 
-        isDeleted: false, 
-        deletedAt: null 
+      const docRef = doc(db, 'packages', id);
+      await updateDoc(docRef, {
+        isDeleted: false,
+        deletedAt: null
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, path);
+      console.error("Error restoring from trash:", error);
+      throw error;
     }
   },
 
   deletePermanently: async (id: string) => {
-    const path = `packages/${id}`;
     try {
-      await deleteDoc(doc(db, 'packages', id));
+      const docRef = doc(db, 'packages', id);
+      await deleteDoc(docRef);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
+      console.error("Error deleting permanently:", error);
+      throw error;
     }
   },
 
   togglePin: async (id: string, isPinned: boolean) => {
-    const path = `packages/${id}`;
     try {
-      await updateDoc(doc(db, 'packages', id), { isPinned });
+      const docRef = doc(db, 'packages', id);
+      await updateDoc(docRef, { isPinned });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, path);
+      console.error("Error toggling pin:", error);
+      throw error;
     }
   },
 
   moveToTrash: async (id: string) => {
-    const path = `packages/${id}`;
     try {
-      await updateDoc(doc(db, 'packages', id), { 
-        isDeleted: true, 
-        deletedAt: serverTimestamp() 
+      const docRef = doc(db, 'packages', id);
+      await updateDoc(docRef, {
+        isDeleted: true,
+        deletedAt: serverTimestamp()
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, path);
+      console.error("Error moving to trash:", error);
+      throw error;
     }
   },
 
   addPackage: async (data: Omit<RecallPackage, 'id' | 'tanggalInput' | 'ownerId'>) => {
-    const path = 'packages';
     try {
       if (!auth.currentUser) throw new Error('User not authenticated');
-      const docRef = await addDoc(collection(db, path), {
+      const payload = {
         ...data,
         ownerId: auth.currentUser.uid,
         isDeleted: false,
         isPinned: false,
-        tanggalInput: serverTimestamp(),
-      });
+        tanggalInput: serverTimestamp()
+      };
+      const docRef = await addDoc(collection(db, 'packages'), payload);
       return docRef.id;
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, path);
+      console.error("Error adding package:", error);
+      throw error;
     }
   },
 
   updatePackage: async (id: string, data: Partial<Omit<RecallPackage, 'id' | 'tanggalInput' | 'ownerId'>>) => {
-    const path = `packages/${id}`;
     try {
-      await updateDoc(doc(db, 'packages', id), data as any);
+      const docRef = doc(db, 'packages', id);
+      await updateDoc(docRef, data);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, path);
+      console.error("Error updating package:", error);
+      throw error;
     }
   },
 
   deletePackage: async (id: string) => {
-    const path = `packages/${id}`;
     try {
-      await deleteDoc(doc(db, 'packages', id));
+      const docRef = doc(db, 'packages', id);
+      await deleteDoc(docRef);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
+      console.error("Error deleting package:", error);
+      throw error;
     }
   },
 
   getSettings: (callback: (settings: AppSettings | null) => void) => {
-    const path = 'settings/config';
-    return onSnapshot(doc(db, 'settings', 'config'), (snapshot) => {
-      if (snapshot.exists()) {
-        callback({ id: snapshot.id, ...snapshot.data() } as AppSettings);
+    const docRef = doc(db, 'settings', 'config');
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        callback({ id: 'settings', ...docSnap.data() } as AppSettings);
       } else {
         callback(null);
       }
     }, (error) => {
-      if (error.message?.includes('offline')) {
-        console.warn("Settings listener offline");
-      } else {
-        handleFirestoreError(error, OperationType.GET, path);
-      }
+      console.error("Error subscribing to settings:", error);
     });
   },
 
   saveSettings: async (settings: Omit<AppSettings, 'id'>) => {
-    const path = 'settings/config';
     try {
-      await setDoc(doc(db, 'settings', 'config'), settings);
+      const docRef = doc(db, 'settings', 'config');
+      await setDoc(docRef, settings);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.error("Error saving settings:", error);
+      throw error;
     }
   },
 
   // User Profile
   getUserProfile: async (uid: string) => {
-    const path = `users/${uid}`;
     try {
       const docSnap = await getDoc(doc(db, 'users', uid));
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
+        return { id: docSnap.id, ...docSnap.data() } as UserProfile;
       }
       return null;
-    } catch (error: any) {
-      handleFirestoreError(error, OperationType.GET, path);
+    } catch (error) {
+      console.error("Error getting user profile:", error);
       return null;
     }
   },
 
   subscribeToProfile: (uid: string, callback: (profile: UserProfile | null) => void) => {
-    const path = `users/${uid}`;
-    return onSnapshot(doc(db, 'users', uid), (snapshot) => {
-      if (snapshot.exists()) {
-        callback({ id: snapshot.id, ...snapshot.data() } as UserProfile);
+    return onSnapshot(doc(db, 'users', uid), (docSnap) => {
+      if (docSnap.exists()) {
+        callback({ id: docSnap.id, ...docSnap.data() } as UserProfile);
       } else {
         callback(null);
       }
     }, (error) => {
-      // Don't throw for background updates if offline, just log
-      if (error.message?.includes('offline')) {
-        console.warn("Profile listener offline");
-      } else {
-        handleFirestoreError(error, OperationType.GET, path);
-      }
+      console.error("Error subscribing to profile:", error);
     });
   },
 
   updateUserProfile: async (uid: string, data: any) => {
-    const path = `users/${uid}`;
     try {
-      await updateDoc(doc(db, 'users', uid), data);
+      const docRef = doc(db, 'users', uid);
+      await setDoc(docRef, data, { merge: true });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, path);
+      console.error("Error updating user profile:", error);
+      throw error;
     }
   },
 
   getAllUsers: async (callback: (users: any[]) => void) => {
-    const path = 'users';
-    const q = query(collection(db, path));
+    const q = query(collection(db, 'users'));
     return onSnapshot(q, (snapshot) => {
-      const users = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const users = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
       }));
       callback(users);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error("Error subscribing to all users:", error);
     });
   }
 };
+

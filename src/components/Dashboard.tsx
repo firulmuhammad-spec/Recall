@@ -49,6 +49,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }, [initialViewMode, initialSortBy]);
 
   const processedItems = useMemo(() => {
+    console.log(`Dashboard processing ${items.length} items...`);
     const now = new Date();
     const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -79,8 +80,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const matchesExclude = excludeTags.length === 0 || 
         !excludeTags.some(tag => item.tags?.includes(tag));
 
-      return matchesSearch && matchesCat && matchesInclude && matchesExclude;
+      const isVisible = matchesSearch && matchesCat && matchesInclude && matchesExclude;
+      if (!isVisible && items.length > 0 && items.length < 10) {
+        // Log why something is hidden if there are few items overall (useful for debug)
+        console.log(`Item "${item.judul}" is hidden by filters`);
+      }
+      return isVisible;
     });
+
+    console.log(`After filtering: ${result.length} items`);
 
     // Sorting
     result.sort((a, b) => {

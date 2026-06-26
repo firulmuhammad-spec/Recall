@@ -1,9 +1,10 @@
 {
   "projectId": "recall-23ae8",
-  "appId": "1:327113382103:web:9bcc2cef2a63b5d6fc3892",
+  "appId": "1:327113382103:web:568d1b70c35a2f82fc3892",
   "apiKey": "AIzaSyCxXWobyOL_63LRzEDtpbYJ4TLqY2pgMBQ",
   "authDomain": "recall-23ae8.firebaseapp.com",
-  "firestoreDatabaseId": "",
+  "firestoreDatabaseId": "ai-studio-44e64186-3182-45ac-a9b3-392d3e1178e0",
   "storageBucket": "recall-23ae8.firebasestorage.app",
-  "messagingSenderId": "327113382103"
+  "messagingSenderId": "327113382103",
+  "measurementId": ""
 }

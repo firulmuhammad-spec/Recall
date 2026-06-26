@@ -188,7 +188,8 @@ export default function App() {
       return;
     }
 
-    const unsubscribePackages = FirestoreService.getPackages((data) => {
+    const isAdmin = userProfile?.role === 'Admin';
+    const unsubscribePackages = FirestoreService.getPackages(isAdmin, (data) => {
       setPackages(data);
     });
 
@@ -196,8 +197,6 @@ export default function App() {
       if (!data) {
         // If settings doc doesn't exist, create it once by an admin or first user
         console.log("Settings not found in DB, using defaults");
-        // We don't auto-create global settings for every user to avoid write spam, 
-        // but we ensure the local state has the defaults (already in useState)
       } else {
         setSettings(data);
       }
@@ -207,7 +206,7 @@ export default function App() {
       if (unsubscribePackages) unsubscribePackages();
       if (unsubscribeSettings) unsubscribeSettings();
     };
-  }, [user]);
+  }, [user, userProfile?.role]);
 
   const handleEdit = (pkg: RecallPackage) => {
     setEditingPackage(pkg);

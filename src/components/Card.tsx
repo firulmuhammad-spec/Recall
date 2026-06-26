@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, User, Trash2, AlertCircle, Pencil, X, Maximize2, ChevronLeft, ChevronRight, Share2, Download, Loader2, Pin, PinOff } from 'lucide-react';
+import { Calendar, User, Trash2, AlertCircle, Pencil, X, Maximize2, ChevronLeft, ChevronRight, Share2, Download, Loader2, Pin, PinOff, ZoomIn, ZoomOut, RotateCcw, RotateCw } from 'lucide-react';
 import { RecallPackage } from '../types';
 import { ExportCard } from './ExportCard';
 import { toPng } from 'html-to-image';
@@ -16,6 +16,8 @@ interface CardProps {
 export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = 'grid' }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [exportMode, setExportMode] = useState<'full' | 'photo_only'>('full');
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -454,14 +456,17 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 lg:p-12 overflow-y-auto"
-            onClick={() => setIsPreviewOpen(false)}
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 lg:p-12 overflow-hidden"
+            onClick={() => {
+              setIsPreviewOpen(false);
+              setZoomScale(1);
+              setRotation(0);
+            }}
           >
             {/* Fullscreen Header Info */}
             <motion.div 
                initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-               className="absolute top-0 left-0 right-0 p-6 lg:p-10 bg-gradient-to-b from-black/90 via-black/40 to-transparent z-[110] flex justify-between items-start"
-               onClick={(e) => e.stopPropagation()}
+               className="absolute top-0 left-0 right-0 p-6 lg:p-10 bg-gradient-to-b from-black/90 via-black/40 to-transparent z-[110] flex justify-between items-start pointer-events-none"
             >
               <div className="max-w-3xl">
                 <div className="flex items-center gap-3 mb-3">
@@ -485,41 +490,104 @@ export const Card: React.FC<CardProps> = ({ item, onDelete, onEdit, viewMode = '
                 </div>
               </div>
               <button 
-                onClick={() => setIsPreviewOpen(false)}
-                className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-3xl text-white transition-all shadow-2xl border border-white/10 hover:rotate-90"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPreviewOpen(false);
+                  setZoomScale(1);
+                  setRotation(0);
+                }}
+                className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-3xl text-white transition-all shadow-2xl border border-white/10 hover:rotate-90 pointer-events-auto"
               >
                 <X size={28} />
               </button>
             </motion.div>
 
+            {/* Zoom Controls Overlay */}
+            <div 
+              className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/10 backdrop-blur-xl p-2 rounded-[24px] border border-white/10 z-[120]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setZoomScale(prev => Math.max(0.5, prev - 0.25))}
+                className="p-3 hover:bg-white/10 rounded-full text-white transition-colors"
+                title="Zoom Out"
+              >
+                <ZoomOut size={20} />
+              </button>
+              <div className="w-12 text-center text-white text-xs font-bold font-mono">
+                {Math.round(zoomScale * 100)}%
+              </div>
+              <button 
+                onClick={() => setZoomScale(prev => Math.min(5, prev + 0.25))}
+                className="p-3 hover:bg-white/10 rounded-full text-white transition-colors"
+                title="Zoom In"
+              >
+                <ZoomIn size={20} />
+              </button>
+              <div className="w-px h-6 bg-white/20 mx-1" />
+              <button 
+                onClick={() => setRotation(prev => (prev + 90) % 360)}
+                className="p-3 hover:bg-white/10 rounded-full text-white transition-colors"
+                title="Rotate Clockwise"
+              >
+                <RotateCw size={20} />
+              </button>
+              <div className="w-px h-6 bg-white/20 mx-1" />
+              <button 
+                onClick={() => {
+                  setZoomScale(1);
+                  setRotation(0);
+                }}
+                className="p-3 hover:bg-white/10 rounded-full text-white transition-colors"
+                title="Reset View"
+              >
+                <RotateCcw size={20} />
+              </button>
+            </div>
+
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-5xl w-full h-[60vh] lg:h-[70vh] flex items-center justify-center p-4 mt-20"
-              onClick={(e) => e.stopPropagation()}
+              className="relative w-full h-full flex items-center justify-center p-4 pointer-events-none"
             >
-              <img 
+              <motion.img 
+                drag
+                dragConstraints={{ left: -1500, right: 1500, top: -1500, bottom: 1500 }}
+                dragElastic={0.2}
                 src={item.foto[currentImgIndex]} 
                 alt={item.judul} 
-                className="max-w-full max-h-full object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5" 
+                animate={{ scale: zoomScale, rotate: rotation }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className={`max-w-full max-h-full object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 pointer-events-auto cursor-grab active:cursor-grabbing`}
+                onClick={(e) => e.stopPropagation()}
               />
 
               {item.foto.length > 1 && (
                 <>
                   <button 
-                    onClick={prevImage}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-all backdrop-blur-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      prevImage(e);
+                      setZoomScale(1);
+                      setRotation(0);
+                    }}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-all backdrop-blur-md z-[110] border border-white/10 pointer-events-auto"
                   >
-                    <ChevronLeft size={24} />
+                    <ChevronLeft size={32} />
                   </button>
                   <button 
-                    onClick={nextImage}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-all backdrop-blur-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nextImage(e);
+                      setZoomScale(1);
+                      setRotation(0);
+                    }}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-all backdrop-blur-md z-[110] border border-white/10 pointer-events-auto"
                   >
-                    <ChevronRight size={24} />
+                    <ChevronRight size={32} />
                   </button>
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1.5 rounded-full mb-4">
+                  <div className="absolute top-[85%] left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md text-white text-[10px] font-black px-4 py-2 rounded-full z-[110] border border-white/10 tracking-widest">
                     {currentImgIndex + 1} / {item.foto.length}
                   </div>
                 </>

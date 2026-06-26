@@ -2,5 +2,5 @@
   "name": "RECALL - Archive System",
   "description": "Smart personal archive for images and data, featuring status-based reminders, user management, and advanced filtering.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
