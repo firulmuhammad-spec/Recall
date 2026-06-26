@@ -195,8 +195,15 @@ export default function App() {
 
     const unsubscribeSettings = FirestoreService.getSettings(async (data) => {
       if (!data) {
-        // If settings doc doesn't exist, create it once by an admin or first user
-        console.log("Settings not found in DB, using defaults");
+        console.log("Settings not found in DB, initializing default settings in DB...");
+        try {
+          await FirestoreService.saveSettings({
+            categories: ["Pekerjaan", "Rumah", "Finance", "Kesehatan", "Lainnya"],
+            availableTags: ["#vibrasi", "#pengujian", "#riwayatkesehatan", "#dokumen", "#penting"]
+          });
+        } catch (e) {
+          console.error("Error initializing default settings in DB:", e);
+        }
       } else {
         setSettings(data);
       }
@@ -368,7 +375,7 @@ export default function App() {
                view === 'users' ? 'User Administration' : 
                view === 'trash' ? 'Recycle Bin System' : 'Account Intelligence'}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               {isOffline && (
                 <span className="flex items-center gap-1.5 px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-500 text-[10px] font-bold rounded-full border border-red-100 dark:border-red-900/30">
                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> Offline Mode
@@ -384,6 +391,13 @@ export default function App() {
                 <div className="font-bold text-xs">
                   {userProfile?.displayName?.charAt(0) || user?.email?.charAt(0)}
                 </div>
+              </button>
+              <button 
+                onClick={() => AuthService.logout()}
+                className="lg:hidden w-9 h-9 flex items-center justify-center rounded-full bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-100/50 dark:border-red-900/30 transition-all hover:scale-105 active:scale-95"
+                title="Logout"
+              >
+                <LogOut size={16} />
               </button>
             </div>
           </header>
